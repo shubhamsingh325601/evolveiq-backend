@@ -1,0 +1,24 @@
+{
+  "name": "evolviq-auth",
+  "version": "1.0.0",
+  "description": "EvolvIQ MVP — Login and Register APIs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "db:migrate": "node --env-file=.env scripts/migrate.js",
+    "db:seed-dev": "node --env-file=.env scripts/migrate.js --seed-dev",
+    "bootstrap:admin": "node --env-file=.env scripts/bootstrap-admin.js",
+    "test": "node --test --test-concurrency=1 --test-reporter=spec test/*.test.js"
+  },
+  "dependencies": {
+    "argon2": "^0.45.1",
+    "fastify": "^5.12.5",
+    "jose": "^5.10.0",
+    "pg": "^8.23.0"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20.6"
+  }
+}
