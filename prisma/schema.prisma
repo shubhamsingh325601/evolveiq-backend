@@ -1,0 +1,91 @@
+// EvolvIQ — Prisma schema. Source of truth for the Prisma Client types.
+// The SQL in prisma/migrations is what Prisma Migrate applies; this file mirrors it.
+//
+// Some database rules cannot be expressed in Prisma's schema language and live only in
+// the migrations (Prisma ignores them when diffing, so they are never dropped):
+//   - CHECK constraints on users (credential-by-role, school-scope-by-role, normalised
+//     email / student ID, parent only on students) and on schools.name length.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// The six roles from the PRD / ARCHITECTURE.md. Stored as a Postgres enum.
+enum UserRole {
+  student
+  parent
+  teacher
+  school_admin
+  psychologist
+  platform_admin
+
+  @@map("user_role")
+}
+
+model School {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 1–200 characters (CHECK constraint in the migration).
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@index([name], map: "schools_name_idx")
+  @@index([createdAt], map: "schools_created_at_idx")
+  @@map("schools")
+}
+
+model User {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  role                UserRole
+  /// NULL for platform-level roles (psychologist, platform_admin).
+  schoolId            String?   @map("school_id") @db.Uuid
+  /// Students only: "one parent, many children".
+  parentId            String?   @map("parent_id") @db.Uuid
+  fullName            String    @map("full_name")
+  /// Adults sign in with email + password …
+  email               String?
+  /// … students with student ID + PIN.
+  studentLoginId      String?   @map("student_login_id")
+  /// argon2id hash of the password or PIN. Never plain text.
+  secretHash          String    @map("secret_hash")
+  isActive            Boolean   @default(true) @map("is_active")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts") @db.SmallInt
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school        School?        @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parent        User?          @relation("ParentChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  children      User[]         @relation("ParentChildren")
+  refreshTokens RefreshToken[]
+
+  // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
+  @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
+  @@unique([studentLoginId], map: "users_student_login_id_key", where: raw("(student_login_id IS NOT NULL)"))
+  @@map("users")
+}
+
+/// Only the JTI is stored — never the raw refresh token.
+model RefreshToken {
+  jti       String    @id @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// All tokens descended from one login share a family (reuse detection).
+  familyId  String    @map("family_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([familyId], map: "refresh_tokens_family_active_idx", where: raw("(revoked_at IS NULL)"))
+  @@map("refresh_tokens")
+}

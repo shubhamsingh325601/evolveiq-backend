@@ -1,0 +1,54 @@
+{
+  "name": "evolviq-auth",
+  "version": "1.0.0",
+  "description": "EvolvIQ backend API (TypeScript, Fastify, Prisma)",
+  "private": true,
+  "type": "module",
+  "main": "dist/src/server.js",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=.env dist/src/server.js",
+    "dev": "prisma generate && tsx watch --env-file-if-exists=.env src/server.ts",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:status": "prisma migrate status",
+    "db:seed-dev": "prisma db execute --file prisma/seed.dev.sql",
+    "bootstrap:admin": "npm run prisma:generate && tsx --env-file-if-exists=.env scripts/bootstrap-admin.ts",
+    "test": "prisma generate && vitest run",
+    "test:unit": "prisma generate && vitest run --project unit",
+    "test:integration": "prisma generate && vitest run --project integration",
+    "test:postman": "npx --yes newman@6 run postman/EvolvIQ-Auth.postman_collection.json"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^9.9.1",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@scalar/fastify-api-reference": "^1.72.3",
+    "argon2": "^0.45.1",
+    "fastify": "^5.12.5",
+    "fastify-type-provider-zod": "^7.0.0",
+    "jose": "^5.10.0",
+    "pg": "^8.23.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^7.10.0",
+    "supertest": "^7.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "undici": "^7.29.1",
+    "mysql2": "^3.24.5",
+    "deepmerge-ts": "^8.0.2"
+  }
+}
