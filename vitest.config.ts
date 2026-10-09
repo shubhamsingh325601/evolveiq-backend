@@ -17,8 +17,8 @@ const TEST_ENV = {
   API_DOCS_ENABLED: 'true',
 };
 
-// API (Supertest) and repository tests — need TEST_DATABASE_URL.
-const INTEGRATION = ['src/**/*.routes*.test.ts', 'src/**/*.repository*.test.ts'];
+// API (Supertest), repository and database-client tests — need TEST_DATABASE_URL.
+const INTEGRATION = ['src/**/*.routes*.test.ts', 'src/**/*.repository*.test.ts', 'src/shared/db/*.test.ts'];
 
 export default defineConfig({
   test: {

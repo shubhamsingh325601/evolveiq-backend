@@ -21,6 +21,8 @@ export interface ApiResponse {
   headers: Record<string, string>;
 }
 
+export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+
 export interface TestContext {
   app: FastifyInstance;
   config: AppConfig;
@@ -28,10 +30,12 @@ export interface TestContext {
   pg: pg.Pool;
   prisma: Db;
   baseUrl: string;
-  send(method: 'GET' | 'POST' | 'PATCH', url: string, opts?: { body?: unknown; token?: string | undefined }): Promise<ApiResponse>;
+  send(method: HttpMethod, url: string, opts?: { body?: unknown; token?: string | undefined }): Promise<ApiResponse>;
   get(url: string, token?: string): Promise<ApiResponse>;
   post(url: string, body: unknown, token?: string): Promise<ApiResponse>;
   patch(url: string, body: unknown, token?: string): Promise<ApiResponse>;
+  put(url: string, token?: string): Promise<ApiResponse>;
+  del(url: string, token?: string): Promise<ApiResponse>;
   login(body: unknown): Promise<ApiResponse>;
   register(body: unknown, token?: string): Promise<ApiResponse>;
   close(): Promise<void>;
@@ -39,7 +43,7 @@ export interface TestContext {
 
 /** Empties every table and re-seeds the demo schools + one Platform Admin ("root"). */
 async function resetData(pool: pg.Pool): Promise<void> {
-  await pool.query('TRUNCATE refresh_tokens, users, schools CASCADE');
+  await pool.query('TRUNCATE refresh_tokens, users, schools CASCADE'); // CASCADE: every table referencing them
   await pool.query(await readFile(new URL('../../prisma/seed.dev.sql', import.meta.url), 'utf8'));
   await pool.query(
     `INSERT INTO users (role, full_name, email, secret_hash) VALUES ('platform_admin', 'Root', $1, $2)`,
@@ -47,7 +51,7 @@ async function resetData(pool: pg.Pool): Promise<void> {
   );
 }
 
-export async function createTestContext(): Promise<TestContext> {
+export async function createTestContext(options: { now?: () => Date } = {}): Promise<TestContext> {
   const url = assertTestDatabase(process.env.TEST_DATABASE_URL);
   process.env.DATABASE_URL = url;
   const config = loadConfig();
@@ -55,14 +59,14 @@ export async function createTestContext(): Promise<TestContext> {
   await resetData(pool);
 
   const prisma = createPrismaClient({ databaseUrl: url, poolMax: 10 });
-  const app = await buildApp({ config, db: prisma });
+  const app = await buildApp({ config, db: prisma, ...(options.now && { now: options.now }) });
   await app.listen({ host: '127.0.0.1', port: 0 });
   const address = app.server.address();
   if (!address || typeof address === 'string') throw new Error('server did not bind a TCP port');
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
   const send: TestContext['send'] = async (method, url, { body, token } = {}) => {
-    let req = request(baseUrl)[method.toLowerCase() as 'get' | 'post' | 'patch'](url);
+    let req = request(baseUrl)[method.toLowerCase() as 'get' | 'post' | 'patch' | 'put' | 'delete'](url);
     if (token) req = req.set('authorization', `Bearer ${token}`);
     const res = body === undefined ? await req : await req.send(body as object);
     return { status: res.status, body: res.body, headers: res.headers as Record<string, string> };
@@ -78,6 +82,8 @@ export async function createTestContext(): Promise<TestContext> {
     get: (url, token) => send('GET', url, { token }),
     post: (url, body, token) => send('POST', url, { body, token }),
     patch: (url, body, token) => send('PATCH', url, { body, token }),
+    put: (url, token) => send('PUT', url, { token }),
+    del: (url, token) => send('DELETE', url, { token }),
     login: (body) => send('POST', '/api/v1/auth/login', { body }),
     register: (body, token) => send('POST', '/api/v1/auth/register', { body, token }),
     async close() {

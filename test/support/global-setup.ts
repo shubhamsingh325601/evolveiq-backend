@@ -6,6 +6,12 @@ import pg from 'pg';
 
 const MIGRATIONS_DIR = new URL('../../prisma/migrations/', import.meta.url);
 
+/**
+ * The test database runs with a non-UTC default TimeZone (UTC+05:30, as on a local install
+ * in India) so any code that silently depends on a UTC server fails here, not in production.
+ */
+export const TEST_SERVER_TIMEZONE = 'Asia/Kolkata';
+
 export function assertTestDatabase(url: string | undefined): string {
   if (!url) throw new Error('Set TEST_DATABASE_URL (a dedicated, disposable database) to run integration tests.');
   const dbName = new URL(url).pathname.slice(1);
@@ -21,6 +27,9 @@ export default async function setup(): Promise<void> {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   try {
+    // Applies to every session opened after this one (the app's and the harness's).
+    const dbName = client.escapeIdentifier(new URL(url).pathname.slice(1));
+    await client.query(`ALTER DATABASE ${dbName} SET TimeZone TO '${TEST_SERVER_TIMEZONE}'`);
     await client.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;');
     const dirs = (await readdir(MIGRATIONS_DIR, { withFileTypes: true }))
       .filter((d) => d.isDirectory())

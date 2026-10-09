@@ -20,6 +20,11 @@ export function createPrismaClient({ databaseUrl, poolMax }: DbOptions): PrismaC
       connectionTimeoutMillis: 5_000,
       // Guard against runaway queries holding a connection.
       statement_timeout: 5_000,
+      // The adapter assumes a UTC session: it sends DateTime values as UTC wall-clock time
+      // with no offset and replaces the offset of every timestamptz it reads with +00:00.
+      // On a server whose TimeZone isn't UTC that shifts every timestamp by the offset, so
+      // pin each session to UTC instead of relying on the server default.
+      options: '-c TimeZone=UTC',
     },
     // An idle client erroring (e.g. DB restart) must not crash the process. The adapter
     // attaches this listener to the pool for us.

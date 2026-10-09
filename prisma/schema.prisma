@@ -4,7 +4,13 @@
 // Some database rules cannot be expressed in Prisma's schema language and live only in
 // the migrations (Prisma ignores them when diffing, so they are never dropped):
 //   - CHECK constraints on users (credential-by-role, school-scope-by-role, normalised
-//     email / student ID, parent only on students) and on schools.name length.
+//     email / student ID), on schools.name and classes.name length, and on parent_students
+//     (a user cannot be their own parent).
+//   - The citext extension used by classes.name (case-insensitive uniqueness per school).
+//   - CHECK constraints on observations (author is a parent or teacher, teacher-only fields,
+//     consistent review state, Significant needs a development area), on assignments
+//     (recommended ⇔ linked to an observation) and on text lengths.
+//   - The trigger that makes monthly_summaries rows immutable.
 
 generator client {
   provider            = "prisma-client"
@@ -37,7 +43,9 @@ model School {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  users User[]
+  users        User[]
+  classes      Class[]
+  observations Observation[]
 
   @@index([name], map: "schools_name_idx")
   @@index([createdAt], map: "schools_created_at_idx")
@@ -49,8 +57,6 @@ model User {
   role                UserRole
   /// NULL for platform-level roles (psychologist, platform_admin).
   schoolId            String?   @map("school_id") @db.Uuid
-  /// Students only: "one parent, many children".
-  parentId            String?   @map("parent_id") @db.Uuid
   fullName            String    @map("full_name")
   /// Adults sign in with email + password …
   email               String?
@@ -62,11 +68,26 @@ model User {
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts") @db.SmallInt
   lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  school        School?        @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  parent        User?          @relation("ParentChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  children      User[]         @relation("ParentChildren")
+  school        School?          @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   refreshTokens RefreshToken[]
+  /// Parents: their children ("one parent, many children").
+  childLinks    ParentStudent[]  @relation("ParentLinks")
+  /// Students: their parent, if linked.
+  parentLink    ParentStudent?   @relation("StudentLink")
+  /// Teachers: the classes they teach.
+  teacherOf     ClassTeacher[]
+  /// Students: the one class they belong to.
+  classLink     ClassStudent?
+
+  observationsAbout    Observation[] @relation("ObservationStudent")
+  observationsWritten  Observation[] @relation("ObservationAuthor")
+  observationsReviewed Observation[] @relation("ObservationReviewer")
+  activitiesCreated    Activity[]
+  assignments          Assignment[]  @relation("AssignmentStudent")
+  assignmentsGiven     Assignment[]  @relation("AssignmentAssigner")
+  monthlySummaries     MonthlySummary[]
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -88,4 +109,274 @@ model RefreshToken {
 
   @@index([familyId], map: "refresh_tokens_family_active_idx", where: raw("(revoked_at IS NULL)"))
   @@map("refresh_tokens")
+}
+
+/// Parent ↔ student. The primary key on student_id = a student has at most one parent.
+model ParentStudent {
+  studentId String   @id @map("student_id") @db.Uuid
+  parentId  String   @map("parent_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  student User @relation("StudentLink", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parent  User @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([parentId], map: "parent_students_parent_id_idx")
+  @@map("parent_students")
+}
+
+model Class {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  /// citext: unique per school ignoring case. 1–100 characters (CHECK in the migration).
+  name      String   @db.Citext
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school   School         @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  teachers ClassTeacher[]
+  students ClassStudent[]
+
+  @@unique([schoolId, name], map: "classes_school_id_name_key")
+  @@map("classes")
+}
+
+/// A class has many teachers; a teacher teaches many classes.
+model ClassTeacher {
+  classId   String   @map("class_id") @db.Uuid
+  teacherId String   @map("teacher_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  class   Class @relation(fields: [classId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  teacher User  @relation(fields: [teacherId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([classId, teacherId])
+  @@index([teacherId], map: "class_teachers_teacher_id_idx")
+  @@map("class_teachers")
+}
+
+/// A student belongs to exactly one class: the primary key is student_id.
+model ClassStudent {
+  studentId String   @id @map("student_id") @db.Uuid
+  classId   String   @map("class_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  student User  @relation(fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  class   Class @relation(fields: [classId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([classId], map: "class_students_class_id_idx")
+  @@map("class_students")
+}
+
+// ───────────────────────────── Observe → Review → Assign → Do ─────────────────────────────
+// Value lists confirmed by the lead (Oct 2026). UI labels: src/modules/observations/observation-options.ts.
+
+enum ObservationArea {
+  emotions
+  behaviour
+  social
+  learning
+  communication
+  physical
+  routines
+  other
+
+  @@map("observation_area")
+}
+
+enum ObservationWhen {
+  today
+  this_week
+  this_month
+  over_a_month
+
+  @@map("observation_when")
+}
+
+enum ObservationFrequency {
+  once
+  sometimes
+  often
+  daily
+
+  @@map("observation_frequency")
+}
+
+/// Teachers only.
+enum ObservationLevel {
+  minor
+  moderate
+  significant
+
+  @@map("observation_level")
+}
+
+/// Teachers only.
+enum LearningBehaviourArea {
+  attention
+  participation
+  following_instructions
+  task_completion
+  organisation
+  working_with_others
+  self_control
+  other
+
+  @@map("learning_behaviour_area")
+}
+
+/// Psychologist review tag. Deliberately no "other".
+enum DevelopmentArea {
+  managing_feelings
+  social_skills
+  communication
+  focus_attention
+  self_control
+  confidence
+  resilience
+  independence
+  learning_skills
+  motor_skills
+
+  @@map("development_area")
+}
+
+enum ObservationStatus {
+  pending
+  reviewed
+
+  @@map("observation_status")
+}
+
+/// "Assign & mark reviewed" / "No action needed".
+enum ReviewOutcome {
+  assigned
+  no_action
+
+  @@map("review_outcome")
+}
+
+model Observation {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The student's school (users.school_id never changes).
+  schoolId              String                 @map("school_id") @db.Uuid
+  studentId             String                 @map("student_id") @db.Uuid
+  authorId              String                 @map("author_id") @db.Uuid
+  /// parent | teacher (CHECK in the migration).
+  authorRole            UserRole               @map("author_role")
+  area                  ObservationArea
+  description           String
+  observedWhen          ObservationWhen        @map("observed_when")
+  frequency             ObservationFrequency
+  level                 ObservationLevel?
+  learningBehaviourArea LearningBehaviourArea? @map("learning_behaviour_area")
+  status                ObservationStatus      @default(pending)
+  reviewOutcome         ReviewOutcome?         @map("review_outcome")
+  developmentArea       DevelopmentArea?       @map("development_area")
+  /// Never shown to parents.
+  teacherOnlyNote       String?                @map("teacher_only_note")
+  reviewedById          String?                @map("reviewed_by_id") @db.Uuid
+  reviewedAt            DateTime?              @map("reviewed_at") @db.Timestamptz(6)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  student     User         @relation("ObservationStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  author      User         @relation("ObservationAuthor", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  reviewedBy  User?        @relation("ObservationReviewer", fields: [reviewedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignments Assignment[]
+
+  @@index([status, createdAt], map: "observations_status_created_at_idx")
+  @@index([schoolId, createdAt], map: "observations_school_id_created_at_idx")
+  @@index([studentId, createdAt], map: "observations_student_id_created_at_idx")
+  @@index([authorId, createdAt], map: "observations_author_id_created_at_idx")
+  @@index([studentId, reviewedAt], map: "observations_student_id_reviewed_at_idx", where: raw("((review_outcome = 'assigned'::review_outcome) AND (development_area IS NOT NULL))"))
+  @@map("observations")
+}
+
+enum ActivityType {
+  mcq
+  text
+  image_pick
+  rating
+  media_response
+
+  @@map("activity_type")
+}
+
+/// The one global activity library. Archived, never deleted.
+model Activity {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  type        ActivityType
+  /// prompt / options / mediaUrl for the type (validated by the API).
+  content     Json
+  createdById String       @map("created_by_id") @db.Uuid
+  archivedAt  DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignments Assignment[]
+
+  @@index([title], map: "activities_title_idx")
+  @@index([createdAt], map: "activities_created_at_idx")
+  @@map("activities")
+}
+
+enum AssignmentSource {
+  direct
+  recommended
+
+  @@map("assignment_source")
+}
+
+model Assignment {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId    String           @map("activity_id") @db.Uuid
+  studentId     String           @map("student_id") @db.Uuid
+  assignedById  String           @map("assigned_by_id") @db.Uuid
+  /// direct = teacher; recommended = psychologist, through an observation review.
+  source        AssignmentSource
+  observationId String?          @map("observation_id") @db.Uuid
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  activity    Activity            @relation(fields: [activityId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  student     User                @relation("AssignmentStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignedBy  User                @relation("AssignmentAssigner", fields: [assignedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  observation Observation?        @relation(fields: [observationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  completion  ActivityCompletion?
+
+  @@unique([observationId, activityId], map: "assignments_observation_id_activity_id_key")
+  @@index([studentId, createdAt], map: "assignments_student_id_created_at_idx")
+  @@index([activityId], map: "assignments_activity_id_idx")
+  @@map("assignments")
+}
+
+/// One per assignment (no reattempts).
+model ActivityCompletion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assignmentId String   @unique(map: "activity_completions_assignment_id_key") @map("assignment_id") @db.Uuid
+  response     Json
+  /// UTC; business days are Asia/Kolkata days.
+  completedAt  DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([completedAt], map: "activity_completions_completed_at_idx")
+  @@map("activity_completions")
+}
+
+/// One per student per COMPLETED month (Asia/Kolkata calendar); immutable (a trigger refuses
+/// UPDATE / DELETE). The current month is built live and never stored.
+model MonthlySummary {
+  studentId String   @map("student_id") @db.Uuid
+  /// First day of the month.
+  month     DateTime @db.Date
+  summary   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([studentId, month])
+  @@map("monthly_summaries")
 }

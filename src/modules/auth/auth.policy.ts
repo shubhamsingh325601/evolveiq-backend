@@ -24,6 +24,16 @@ const CREATABLE_BY: Readonly<Partial<Record<Role, ReadonlySet<Role>>>> = Object.
 
 export const REGISTRAR_ROLES = Object.freeze([Role.PlatformAdmin, Role.SchoolAdmin] as const);
 
+const NONE: ReadonlySet<Role> = new Set();
+
+/**
+ * The roles whose accounts `role` manages (creates, lists, views) — PRD §3. A School Admin's
+ * reach is further limited to their own school, which callers apply.
+ */
+export function rolesManagedBy(role: Role): ReadonlySet<Role> {
+  return CREATABLE_BY[role] ?? NONE;
+}
+
 // Psychologist and Platform Admin work across schools (C3 filters the queue "by school").
 const SCHOOL_SCOPED: ReadonlySet<Role> = new Set<Role>([
   Role.Student, Role.Parent, Role.Teacher, Role.SchoolAdmin,

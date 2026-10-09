@@ -1,8 +1,8 @@
 {
  "info": {
-  "name": "EvolvIQ — API (Auth & Schools)",
+  "name": "EvolvIQ — API",
   "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-  "description": "Run top-to-bottom with the Collection Runner. Requires the bootstrap Platform Admin and demo schools (npm run db:seed-dev). Change {{run}} to a new value for each run so emails/IDs stay unique. Folder 5 covers the Platform Admin school APIs; JWTs are never hard-coded — they are captured from the login requests into collection variables."
+  "description": "Run top-to-bottom with the Collection Runner. Requires the bootstrap Platform Admin and demo schools (npm run db:seed-dev). Change {{run}} to a new value for each run so emails/IDs/class names stay unique. JWTs are never hard-coded — they are captured from login requests into collection variables, as are the ids later folders use. Folders: 1–4 auth & registration, 5 schools, 6 logout, 7 users, 8 parent ↔ student links, 9 classes, 10 activity library, 11 observations & review, 12 assignments & completions, 13 progress. Folders 6–13 depend on the accounts created in folders 2–4."
  },
  "variable": [
   {
@@ -43,6 +43,134 @@
   },
   {
    "key": "schoolId",
+   "value": ""
+  },
+  {
+   "key": "parentId",
+   "value": ""
+  },
+  {
+   "key": "teacherId",
+   "value": ""
+  },
+  {
+   "key": "sessionAccessToken",
+   "value": ""
+  },
+  {
+   "key": "sessionRefreshToken",
+   "value": ""
+  },
+  {
+   "key": "otherRefreshToken",
+   "value": ""
+  },
+  {
+   "key": "schoolAdminId",
+   "value": ""
+  },
+  {
+   "key": "parentToken",
+   "value": ""
+  },
+  {
+   "key": "studentUserId",
+   "value": ""
+  },
+  {
+   "key": "studentToken",
+   "value": ""
+  },
+  {
+   "key": "psychologistId",
+   "value": ""
+  },
+  {
+   "key": "psychologistToken",
+   "value": ""
+  },
+  {
+   "key": "tempTeacherId",
+   "value": ""
+  },
+  {
+   "key": "student2Id",
+   "value": ""
+  },
+  {
+   "key": "student2Token",
+   "value": ""
+  },
+  {
+   "key": "student3Id",
+   "value": ""
+  },
+  {
+   "key": "parentBId",
+   "value": ""
+  },
+  {
+   "key": "parentBToken",
+   "value": ""
+  },
+  {
+   "key": "teacherBId",
+   "value": ""
+  },
+  {
+   "key": "classId",
+   "value": ""
+  },
+  {
+   "key": "class2Id",
+   "value": ""
+  },
+  {
+   "key": "mcqActivityId",
+   "value": ""
+  },
+  {
+   "key": "textActivityId",
+   "value": ""
+  },
+  {
+   "key": "ratingActivityId",
+   "value": ""
+  },
+  {
+   "key": "archivedActivityId",
+   "value": ""
+  },
+  {
+   "key": "observationId",
+   "value": ""
+  },
+  {
+   "key": "observation2Id",
+   "value": ""
+  },
+  {
+   "key": "parentObservationId",
+   "value": ""
+  },
+  {
+   "key": "assignmentId",
+   "value": ""
+  },
+  {
+   "key": "mcqAssignmentId",
+   "value": ""
+  },
+  {
+   "key": "ratingAssignmentId",
+   "value": ""
+  },
+  {
+   "key": "currentMonth",
+   "value": ""
+  },
+  {
+   "key": "nextMonth",
    "value": ""
   }
  ],
@@ -1916,6 +2044,5106 @@
         "api",
         "v1",
         "schools"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "6 · Session (logout)",
+   "description": "POST /auth/logout ends the caller's current session: the presented refresh token and every token rotated from it are revoked. Other sessions stay signed in; the access token expires on its own. Also captures {{teacherId}} for later folders.",
+   "item": [
+    {
+     "name": "Login — Teacher (saves teacherId + session tokens)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"teacherId\", pm.response.json().user.id);",
+         "pm.collectionVariables.set(\"sessionAccessToken\", pm.response.json().accessToken);",
+         "pm.collectionVariables.set(\"sessionRefreshToken\", pm.response.json().refreshToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"t{{run}}@school-a.test\",\n  \"password\": \"Teacher-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Login — Teacher, second session (saves otherRefreshToken)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"otherRefreshToken\", pm.response.json().refreshToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"t{{run}}@school-a.test\",\n  \"password\": \"Teacher-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Logout — current session → 204",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));",
+         "pm.test(\"no body\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{sessionAccessToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"{{sessionRefreshToken}}\"\n}"
+      },
+      "description": "Every role may log out. Revokes this session only."
+     }
+    },
+    {
+     "name": "Refresh with the logged-out token → 401",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+         "pm.test(\"error code INVALID_REFRESH_TOKEN\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_REFRESH_TOKEN\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/refresh",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "refresh"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"{{sessionRefreshToken}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Logout again (already ended) → 204",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{sessionAccessToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"{{sessionRefreshToken}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Logout — someone else's refresh token → 401",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+         "pm.test(\"error code INVALID_REFRESH_TOKEN\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_REFRESH_TOKEN\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"{{otherRefreshToken}}\"\n}"
+      },
+      "description": "A refresh token can only end its own owner's session."
+     }
+    },
+    {
+     "name": "The other session still refreshes → 200",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/refresh",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "refresh"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"{{otherRefreshToken}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Logout — unknown field → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"error code VALIDATION_ERROR\", () => pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"x.y.z\",\n  \"allDevices\": true\n}"
+      }
+     }
+    },
+    {
+     "name": "Logout — no access token → 401",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 401\", () => pm.response.to.have.status(401));",
+         "pm.test(\"error code UNAUTHENTICATED\", () => pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHENTICATED\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/logout",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "logout"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"refreshToken\": \"{{otherRefreshToken}}\"\n}"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "7 · Users (Platform Admin, School Admin)",
+   "description": "List / view / edit / deactivate / reactivate. Platform Admins manage everyone; School Admins only students, teachers and parents of their own school (anyone else → 404). Nobody can deactivate or reactivate themselves. Also captures the ids and tokens the workflow folders use.",
+   "item": [
+    {
+     "name": "Login — School Admin (saves schoolAdminId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"schoolAdminId\", pm.response.json().user.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"sa{{run}}@school-a.test\",\n  \"password\": \"SchoolAdmin-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Login — Parent (saves parentToken)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"parentToken\", pm.response.json().accessToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"parent{{run}}@mail.test\",\n  \"password\": \"Parent-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Login — Student (saves studentUserId + studentToken)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"studentUserId\", pm.response.json().user.id);",
+         "pm.collectionVariables.set(\"studentToken\", pm.response.json().accessToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"A{{run}}-001\",\n  \"pin\": \"482913\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Login — Psychologist (saves psychologistId + token)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"psychologistId\", pm.response.json().user.id);",
+         "pm.collectionVariables.set(\"psychologistToken\", pm.response.json().accessToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"psy{{run}}@evolviq.dev\",\n  \"password\": \"Psychologist-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "List users — Platform Admin, teachers of School A",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const b = pm.response.json();",
+         "pm.test(\"only School A teachers\", () => b.users.forEach((u) => { pm.expect(u.role).to.eql(\"teacher\"); pm.expect(u.schoolId).to.eql(pm.variables.get(\"schoolAId\")); }));",
+         "pm.test(\"no secrets\", () => pm.expect(pm.response.text()).to.not.match(/secret|Hash|argon2|locked/));",
+         "pm.test(\"pagination\", () => pm.expect(b.pagination).to.have.all.keys(\"page\", \"limit\", \"total\", \"totalPages\", \"hasNextPage\", \"hasPreviousPage\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users?role=teacher&schoolId={{schoolAId}}&sortBy=createdAt&sortOrder=desc",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users"
+       ],
+       "query": [
+        {
+         "key": "role",
+         "value": "teacher"
+        },
+        {
+         "key": "schoolId",
+         "value": "{{schoolAId}}"
+        },
+        {
+         "key": "sortBy",
+         "value": "createdAt"
+        },
+        {
+         "key": "sortOrder",
+         "value": "desc"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "List users — School Admin sees only own-school students/teachers/parents",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"own school, managed roles only\", () => pm.response.json().users.forEach((u) => { pm.expect(u.schoolId).to.eql(pm.variables.get(\"schoolAId\")); pm.expect([\"student\", \"teacher\", \"parent\"]).to.include(u.role); }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users?limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users"
+       ],
+       "query": [
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "List users — School Admin, another school → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+         "pm.test(\"error code FORBIDDEN\", () => pm.expect(pm.response.json().error.code).to.eql(\"FORBIDDEN\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users?schoolId={{schoolBId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users"
+       ],
+       "query": [
+        {
+         "key": "schoolId",
+         "value": "{{schoolBId}}"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "List users — School Admin, role=school_admin → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users?role=school_admin",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users"
+       ],
+       "query": [
+        {
+         "key": "role",
+         "value": "school_admin"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "List users — sortBy not allowlisted → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"error code VALIDATION_ERROR\", () => pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users?sortBy=email",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users"
+       ],
+       "query": [
+        {
+         "key": "sortBy",
+         "value": "email"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "View user — School Admin views their student",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const u = pm.response.json().user;",
+         "pm.test(\"student shape\", () => { pm.expect(u).to.have.all.keys(\"id\", \"role\", \"fullName\", \"email\", \"studentId\", \"schoolId\", \"parentId\", \"isActive\", \"createdAt\"); pm.expect(u.email).to.eql(null); pm.expect(u.parentId).to.eql(pm.variables.get(\"parentId\")); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{studentUserId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{studentUserId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "View user — School Admin, a psychologist (out of reach) → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+         "pm.test(\"error code NOT_FOUND\", () => pm.expect(pm.response.json().error.code).to.eql(\"NOT_FOUND\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{psychologistId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{psychologistId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "View user — teacher token → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{studentUserId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{studentUserId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Edit user — teacher name (School Admin)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"trimmed name\", () => pm.expect(pm.response.json().user.fullName).to.eql(\"Priya Raman-Iyer\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{teacherId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{teacherId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"fullName\": \"  Priya Raman-Iyer  \"\n}"
+      },
+      "description": "Adults: fullName, email. Students: fullName, studentId. Role and school never change."
+     }
+    },
+    {
+     "name": "Edit user — student gets an email → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"names the field\", () => pm.expect(pm.response.json().error.details).to.eql([{ field: \"email\", message: \"is not allowed for students\" }]));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{studentUserId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{studentUserId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"kid{{run}}@mail.test\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Edit user — role / school are immutable → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"both rejected\", () => { const f = pm.response.json().error.details.map((d) => d.field); pm.expect(f).to.include(\"role\"); pm.expect(f).to.include(\"schoolId\"); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{teacherId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{teacherId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"fullName\": \"X\",\n  \"role\": \"school_admin\",\n  \"schoolId\": \"{{schoolBId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Edit user — email already taken → 409",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"error code DUPLICATE_ACCOUNT\", () => pm.expect(pm.response.json().error.code).to.eql(\"DUPLICATE_ACCOUNT\"));",
+         "pm.test(\"field email\", () => pm.expect(pm.response.json().error.details).to.eql({ field: \"email\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{teacherId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{teacherId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"PARENT{{run}}@mail.test\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Register — temporary teacher (saves tempTeacherId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"tempTeacherId\", pm.response.json().user.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"role\": \"teacher\",\n  \"fullName\": \"Temp Teacher\",\n  \"email\": \"temp{{run}}@school-a.test\",\n  \"password\": \"Teacher-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Deactivate — School Admin deactivates own-school teacher",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"inactive\", () => pm.expect(pm.response.json().user.isActive).to.eql(false));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{tempTeacherId}}/deactivate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{tempTeacherId}}",
+        "deactivate"
+       ]
+      },
+      "description": "Also revokes all of the user's refresh tokens."
+     }
+    },
+    {
+     "name": "Login — deactivated teacher → 403 ACCOUNT_DISABLED",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+         "pm.test(\"error code ACCOUNT_DISABLED\", () => pm.expect(pm.response.json().error.code).to.eql(\"ACCOUNT_DISABLED\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"temp{{run}}@school-a.test\",\n  \"password\": \"Teacher-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Reactivate — Platform Admin",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"active\", () => pm.expect(pm.response.json().user.isActive).to.eql(true));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{tempTeacherId}}/reactivate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{tempTeacherId}}",
+        "reactivate"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Login — reactivated teacher → 200",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"temp{{run}}@school-a.test\",\n  \"password\": \"Teacher-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Deactivate yourself → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));",
+         "pm.test(\"message\", () => pm.expect(pm.response.json().error.message).to.eql(\"You cannot deactivate your own account.\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{schoolAdminId}}/deactivate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{schoolAdminId}}",
+        "deactivate"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Deactivate — teacher token → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/{{tempTeacherId}}/deactivate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "{{tempTeacherId}}",
+        "deactivate"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Deactivate — unknown user → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/users/99999999-9999-4999-8999-999999999999/deactivate",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "users",
+        "99999999-9999-4999-8999-999999999999",
+        "deactivate"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "8 · Parent ↔ student links",
+   "description": "A parent has many children; a student has one parent; both in the same school. Platform Admin and School Admin (own school) link / unlink; parents list their own children.",
+   "item": [
+    {
+     "name": "Register — second student, no parent (saves student2Id)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"student2Id\", pm.response.json().user.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"role\": \"student\",\n  \"fullName\": \"Diya V\",\n  \"studentId\": \"A{{run}}-002\",\n  \"pin\": \"482913\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Register — third student, no parent or class (saves student3Id)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"student3Id\", pm.response.json().user.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"role\": \"student\",\n  \"fullName\": \"Kabir S\",\n  \"studentId\": \"A{{run}}-003\",\n  \"pin\": \"482913\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Register — School B parent (saves parentBId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"parentBId\", pm.response.json().user.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"role\": \"parent\",\n  \"fullName\": \"Ravi B\",\n  \"email\": \"parentb{{run}}@mail.test\",\n  \"password\": \"Parent-Pass-1\",\n  \"schoolId\": \"{{schoolBId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Login — School B parent (saves parentBToken)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"parentBToken\", pm.response.json().accessToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"email\": \"parentb{{run}}@mail.test\",\n  \"password\": \"Parent-Pass-1\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Link parent ↔ second student → 201",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "const l = pm.response.json().link;",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(l).to.have.all.keys(\"parent\", \"student\", \"createdAt\"));",
+         "pm.test(\"linked\", () => { pm.expect(l.parent.id).to.eql(pm.variables.get(\"parentId\")); pm.expect(l.student.id).to.eql(pm.variables.get(\"student2Id\")); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"parentId\": \"{{parentId}}\",\n  \"studentId\": \"{{student2Id}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Link the same student again → 409",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"one parent per student\", () => pm.expect(pm.response.json().error.message).to.eql(\"This student already has a parent.\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"parentId\": \"{{parentId}}\",\n  \"studentId\": \"{{student2Id}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Link a School B parent to a School A student → 422",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+         "pm.test(\"error code INVALID_REFERENCE\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_REFERENCE\"));",
+         "pm.test(\"field parentId\", () => pm.expect(pm.response.json().error.details).to.eql({ field: \"parentId\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"parentId\": \"{{parentBId}}\",\n  \"studentId\": \"{{student3Id}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "List links — Parent sees only their own children",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const ids = pm.response.json().links.map((l) => l.student.id).sort();",
+         "pm.test(\"exactly the two children\", () => pm.expect(ids).to.eql([pm.variables.get(\"studentUserId\"), pm.variables.get(\"student2Id\")].sort()));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students"
+       ]
+      }
+     }
+    },
+    {
+     "name": "List links — teacher token → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Unlink second student → 204",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students/{{student2Id}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students",
+        "{{student2Id}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Unlink again → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "DELETE",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students/{{student2Id}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students",
+        "{{student2Id}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Relink parent ↔ second student → 201",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/parent-students",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "parent-students"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"parentId\": \"{{parentId}}\",\n  \"studentId\": \"{{student2Id}}\"\n}"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "9 · Classes (School Admin)",
+   "description": "A class belongs to the School Admin's school (taken from the token), has only a name (unique per school, any case → 409), many teachers, and students who each belong to one class. Teachers see only their own classes.",
+   "item": [
+    {
+     "name": "Register — School B teacher (saves teacherBId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"teacherBId\", pm.response.json().user.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/register",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "register"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"role\": \"teacher\",\n  \"fullName\": \"Bhavna B\",\n  \"email\": \"tb{{run}}@school-b.test\",\n  \"password\": \"Teacher-Pass-1\",\n  \"schoolId\": \"{{schoolBId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Create class (saves classId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "const k = pm.response.json().class;",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(k).to.have.all.keys(\"id\", \"schoolId\", \"name\", \"createdAt\", \"updatedAt\"));",
+         "pm.test(\"own school, trimmed\", () => { pm.expect(k.schoolId).to.eql(pm.variables.get(\"schoolAId\")); pm.expect(k.name).to.eql(`Grade 4 – ${pm.variables.get(\"run\")}`); });",
+         "pm.test(\"Location header\", () => pm.expect(pm.response.headers.get(\"Location\")).to.eql(`/api/v1/classes/${k.id}`));",
+         "pm.collectionVariables.set(\"classId\", k.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"  Grade 4 – {{run}}  \"\n}"
+      }
+     }
+    },
+    {
+     "name": "Create class — same name, different case → 409",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"error code CONFLICT\", () => pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"GRADE 4 – {{run}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Create class — schoolId in body → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"schoolId not allowed\", () => pm.expect(pm.response.json().error.details).to.deep.include({ field: \"schoolId\", message: \"is not allowed\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"Elsewhere {{run}}\",\n  \"schoolId\": \"{{schoolBId}}\"\n}"
+      },
+      "description": "The school always comes from the token, never the body."
+     }
+    },
+    {
+     "name": "Create second class (saves class2Id)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"class2Id\", pm.response.json().class.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"Grade 5 – {{run}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Assign teacher to class → 204",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{classId}}/teachers/{{teacherId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{classId}}",
+        "teachers",
+        "{{teacherId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Assign the same teacher again → 204 (idempotent)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{classId}}/teachers/{{teacherId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{classId}}",
+        "teachers",
+        "{{teacherId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Assign a School B teacher → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));",
+         "pm.test(\"error code NOT_FOUND\", () => pm.expect(pm.response.json().error.code).to.eql(\"NOT_FOUND\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{classId}}/teachers/{{teacherBId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{classId}}",
+        "teachers",
+        "{{teacherBId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Add student to class → 204",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{classId}}/students/{{studentUserId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{classId}}",
+        "students",
+        "{{studentUserId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Add second student to class → 204",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 204\", () => pm.response.to.have.status(204));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{classId}}/students/{{student2Id}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{classId}}",
+        "students",
+        "{{student2Id}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Add student to a second class → 409",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"one class per student\", () => pm.expect(pm.response.json().error.message).to.eql(\"This student already belongs to another class.\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PUT",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{class2Id}}/students/{{studentUserId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{class2Id}}",
+        "students",
+        "{{studentUserId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Rename class",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"renamed\", () => pm.expect(pm.response.json().class.name).to.eql(`Grade 5 B – ${pm.variables.get(\"run\")}`));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{class2Id}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{class2Id}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"Grade 5 B – {{run}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "List classes — Teacher sees only assigned classes",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const ids = pm.response.json().classes.map((k) => k.id);",
+         "pm.test(\"assigned class only\", () => { pm.expect(ids).to.include(pm.variables.get(\"classId\")); pm.expect(ids).to.not.include(pm.variables.get(\"class2Id\")); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes?limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ],
+       "query": [
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "View class — Teacher sees teachers and students",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const b = pm.response.json();",
+         "pm.test(\"members\", () => { pm.expect(b.teachers.map((t) => t.id)).to.include(pm.variables.get(\"teacherId\")); pm.expect(b.students.map((s) => s.id)).to.include.members([pm.variables.get(\"studentUserId\"), pm.variables.get(\"student2Id\")]); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{classId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{classId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "View class — Teacher, a class they don't teach → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes/{{class2Id}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes",
+        "{{class2Id}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Create class — teacher token → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"Nope {{run}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Create class — Platform Admin → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{platformToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/classes",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "classes"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"name\": \"Nope {{run}}\"\n}"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "10 · Activity library (Psychologist)",
+   "description": "One global library. Psychologists create, edit and archive (never delete); teachers browse. content is one of five types (one discriminated union on \"type\").",
+   "item": [
+    {
+     "name": "Create — MCQ (saves mcqActivityId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "const a = pm.response.json().activity;",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(a).to.have.all.keys(\"id\", \"title\", \"content\", \"isArchived\", \"isAssigned\", \"createdAt\", \"updatedAt\"));",
+         "pm.test(\"not assigned yet\", () => pm.expect(a.isAssigned).to.eql(false));",
+         "pm.collectionVariables.set(\"mcqActivityId\", a.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Feelings check-in {{run}}\",\n  \"content\": {\n    \"type\": \"mcq\",\n    \"prompt\": \"How are you feeling today?\",\n    \"options\": [\n      {\n        \"id\": \"happy\",\n        \"label\": \"Happy\"\n      },\n      {\n        \"id\": \"calm\",\n        \"label\": \"Calm\"\n      },\n      {\n        \"id\": \"sad\",\n        \"label\": \"Sad\"\n      }\n    ]\n  }\n}"
+      },
+      "description": "Single-select. No correct answer, no scoring."
+     }
+    },
+    {
+     "name": "Create — Text (saves textActivityId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"textActivityId\", pm.response.json().activity.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Daily journal {{run}}\",\n  \"content\": {\n    \"type\": \"text\",\n    \"prompt\": \"Tell us one good thing about today.\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Create — Image pick",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Calm picture {{run}}\",\n  \"content\": {\n    \"type\": \"image_pick\",\n    \"prompt\": \"Pick the calm picture.\",\n    \"options\": [\n      {\n        \"id\": \"lake\",\n        \"imageUrl\": \"https://cdn.example.test/lake.png\",\n        \"label\": \"Lake\"\n      },\n      {\n        \"id\": \"storm\",\n        \"imageUrl\": \"https://cdn.example.test/storm.png\"\n      }\n    ]\n  }\n}"
+      },
+      "description": "Images are URLs (no upload in the MVP)."
+     }
+    },
+    {
+     "name": "Create — 1–5 rating (saves ratingActivityId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"ratingActivityId\", pm.response.json().activity.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Sleep rating {{run}}\",\n  \"content\": {\n    \"type\": \"rating\",\n    \"prompt\": \"How well did you sleep?\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Create — Media + response",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Watch and tell {{run}}\",\n  \"content\": {\n    \"type\": \"media_response\",\n    \"prompt\": \"Watch, then tell us one thing you noticed.\",\n    \"mediaUrl\": \"https://cdn.example.test/clip.mp4\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Create — MCQ with one option → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"error code VALIDATION_ERROR\", () => pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Bad {{run}}\",\n  \"content\": {\n    \"type\": \"mcq\",\n    \"prompt\": \"x\",\n    \"options\": [\n      {\n        \"id\": \"a\",\n        \"label\": \"A\"\n      }\n    ]\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Create — unknown type → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Bad {{run}}\",\n  \"content\": {\n    \"type\": \"essay\",\n    \"prompt\": \"x\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Create — teacher token → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Nope {{run}}\",\n  \"content\": {\n    \"type\": \"text\",\n    \"prompt\": \"x\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Browse — Teacher, MCQ only",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"mcq only\", () => pm.response.json().activities.forEach((a) => pm.expect(a.content.type).to.eql(\"mcq\")));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities?type=mcq&title={{run}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ],
+       "query": [
+        {
+         "key": "type",
+         "value": "mcq"
+        },
+        {
+         "key": "title",
+         "value": "{{run}}"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Edit — title (Psychologist)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities/{{textActivityId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities",
+        "{{textActivityId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Daily journal (v2) {{run}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Create — to archive (saves archivedActivityId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"archivedActivityId\", pm.response.json().activity.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"title\": \"Retired {{run}}\",\n  \"content\": {\n    \"type\": \"text\",\n    \"prompt\": \"Old.\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Archive → 200",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"archived\", () => pm.expect(pm.response.json().activity.isArchived).to.eql(true));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities/{{archivedActivityId}}/archive",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities",
+        "{{archivedActivityId}}",
+        "archive"
+       ]
+      },
+      "description": "Activities are never deleted."
+     }
+    },
+    {
+     "name": "View archived — Teacher → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities/{{archivedActivityId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities",
+        "{{archivedActivityId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "List archived — Teacher → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities?isArchived=true",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities"
+       ],
+       "query": [
+        {
+         "key": "isArchived",
+         "value": "true"
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "11 · Observations & review",
+   "description": "Teachers write about students of their classes (optional Level + learning-behaviour area); parents write about their own children under /family (those two fields → 400). Each sees only what they wrote. Psychologists review: one transaction, once (again → 409), Significant needs a development area.",
+   "item": [
+    {
+     "name": "Teacher writes a Significant observation (saves observationId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "const o = pm.response.json().observation;",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(o).to.have.all.keys(\"id\", \"studentId\", \"area\", \"description\", \"when\", \"howOften\", \"status\", \"createdAt\", \"level\", \"learningBehaviourArea\", \"teacherOnlyNote\"));",
+         "pm.test(\"pending\", () => pm.expect(o.status).to.eql(\"pending\"));",
+         "pm.collectionVariables.set(\"observationId\", o.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"area\": \"emotions\",\n  \"description\": \"Cried at drop-off three days in a row.\",\n  \"when\": \"this_week\",\n  \"howOften\": \"often\",\n  \"level\": \"significant\",\n  \"learningBehaviourArea\": \"participation\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher writes about a student outside their classes → 422",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+         "pm.test(\"error code INVALID_REFERENCE\", () => pm.expect(pm.response.json().error.code).to.eql(\"INVALID_REFERENCE\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{student3Id}}\",\n  \"area\": \"social\",\n  \"description\": \"x\",\n  \"when\": \"today\",\n  \"howOften\": \"once\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher — unknown area value → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"error code VALIDATION_ERROR\", () => pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"area\": \"feelings\",\n  \"description\": \"x\",\n  \"when\": \"today\",\n  \"howOften\": \"once\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Parent writes an observation (saves parentObservationId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "const o = pm.response.json().observation;",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(o).to.have.all.keys(\"id\", \"studentId\", \"area\", \"description\", \"when\", \"howOften\", \"status\", \"createdAt\"));",
+         "pm.collectionVariables.set(\"parentObservationId\", o.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"area\": \"routines\",\n  \"description\": \"Not sleeping well this week.\",\n  \"when\": \"this_week\",\n  \"howOften\": \"daily\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Parent sends Level → 400 (not ignored)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"level not allowed\", () => pm.expect(pm.response.json().error.details).to.deep.include({ field: \"level\", message: \"is not allowed\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"area\": \"routines\",\n  \"description\": \"x\",\n  \"when\": \"today\",\n  \"howOften\": \"once\",\n  \"level\": \"minor\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Parent sends learning-behaviour area → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"area\": \"routines\",\n  \"description\": \"x\",\n  \"when\": \"today\",\n  \"howOften\": \"once\",\n  \"learningBehaviourArea\": \"attention\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Parent writes about someone else's child → 422",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 422\", () => pm.response.to.have.status(422));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{student3Id}}\",\n  \"area\": \"routines\",\n  \"description\": \"x\",\n  \"when\": \"today\",\n  \"howOften\": \"once\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher — my observations (own only)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const ids = pm.response.json().observations.map((o) => o.id);",
+         "pm.test(\"own, not the parent's\", () => { pm.expect(ids).to.include(pm.variables.get(\"observationId\")); pm.expect(ids).to.not.include(pm.variables.get(\"parentObservationId\")); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/mine?limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "mine"
+       ],
+       "query": [
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Psychologist — queue: pending + Significant",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const list = pm.response.json().observations;",
+         "pm.test(\"filters applied\", () => list.forEach((o) => { pm.expect(o.status).to.eql(\"pending\"); pm.expect(o.level).to.eql(\"significant\"); }));",
+         "pm.test(\"contains ours\", () => pm.expect(list.map((o) => o.id)).to.include(pm.variables.get(\"observationId\")));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations?status=pending&level=significant&limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ],
+       "query": [
+        {
+         "key": "status",
+         "value": "pending"
+        },
+        {
+         "key": "level",
+         "value": "significant"
+        },
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Psychologist — queue: from parents, School A",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"parent-authored, School A\", () => pm.response.json().observations.forEach((o) => { pm.expect(o.author.role).to.eql(\"parent\"); pm.expect(o.schoolId).to.eql(pm.variables.get(\"schoolAId\")); }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations?authorRole=parent&schoolId={{schoolAId}}&limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ],
+       "query": [
+        {
+         "key": "authorRole",
+         "value": "parent"
+        },
+        {
+         "key": "schoolId",
+         "value": "{{schoolAId}}"
+        },
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Psychologist — detail with history",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const b = pm.response.json();",
+         "pm.test(\"history has the parent observation\", () => pm.expect(b.history.map((o) => o.id)).to.include(pm.variables.get(\"parentObservationId\")));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/{{observationId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "{{observationId}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Queue — teacher token → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Review Significant without development area → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"developmentArea required\", () => pm.expect(pm.response.json().error.details).to.eql([{ field: \"developmentArea\", message: \"is required for Significant observations\" }]));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/{{observationId}}/review",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "{{observationId}}",
+        "review"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"outcome\": \"no_action\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Review — Assign & mark reviewed",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const r = pm.response.json().observation.review;",
+         "pm.test(\"reviewed with assignments\", () => { pm.expect(r.outcome).to.eql(\"assigned\"); pm.expect(r.developmentArea).to.eql(\"managing_feelings\"); pm.expect(r.activityIds).to.have.members([pm.variables.get(\"mcqActivityId\"), pm.variables.get(\"ratingActivityId\")]); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/{{observationId}}/review",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "{{observationId}}",
+        "review"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"outcome\": \"assigned\",\n  \"activityIds\": [\n    \"{{mcqActivityId}}\",\n    \"{{ratingActivityId}}\"\n  ],\n  \"developmentArea\": \"managing_feelings\",\n  \"teacherOnlyNote\": \"Offer a calm-down corner before transitions.\"\n}"
+      },
+      "description": "One API call, one database transaction: creates the recommended assignments and marks the observation reviewed."
+     }
+    },
+    {
+     "name": "Review again → 409",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"error code CONFLICT\", () => pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/{{observationId}}/review",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "{{observationId}}",
+        "review"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"outcome\": \"no_action\",\n  \"developmentArea\": \"confidence\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Review parent observation — No action needed",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/{{parentObservationId}}/review",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "{{parentObservationId}}",
+        "review"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"outcome\": \"no_action\",\n  \"teacherOnlyNote\": \"Internal: monitor sleep.\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher writes a second observation (saves observation2Id)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "pm.collectionVariables.set(\"observation2Id\", pm.response.json().observation.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"area\": \"learning\",\n  \"description\": \"Distracted in maths.\",\n  \"when\": \"today\",\n  \"howOften\": \"sometimes\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Review it with an archived activity → 422",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+         "pm.test(\"field activityIds\", () => pm.expect(pm.response.json().error.details).to.eql({ field: \"activityIds\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/{{observation2Id}}/review",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "{{observation2Id}}",
+        "review"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"outcome\": \"assigned\",\n  \"activityIds\": [\n    \"{{archivedActivityId}}\"\n  ]\n}"
+      }
+     }
+    },
+    {
+     "name": "Parent — my observations: status only, nothing clinical",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const list = pm.response.json().observations;",
+         "pm.test(\"only my own\", () => pm.expect(list.map((o) => o.id)).to.not.include(pm.variables.get(\"observationId\")));",
+         "const mine = list.find((o) => o.id === pm.variables.get(\"parentObservationId\"));",
+         "pm.test(\"reviewed\", () => pm.expect(mine.status).to.eql(\"reviewed\"));",
+         "pm.test(\"allow-listed keys only\", () => list.forEach((o) => pm.expect(o).to.have.all.keys(\"id\", \"studentId\", \"area\", \"description\", \"when\", \"howOften\", \"status\", \"createdAt\")));",
+         "pm.test(\"no clinical data\", () => pm.expect(pm.response.text()).to.not.match(/monitor sleep|teacherOnlyNote|developmentArea|reviewedBy|level/));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/observations",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "observations"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Teacher — my observations show the teacher-only note",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const o = pm.response.json().observations.find((x) => x.id === pm.variables.get(\"observationId\"));",
+         "pm.test(\"note visible\", () => pm.expect(o.teacherOnlyNote).to.eql(\"Offer a calm-down corner before transitions.\"));",
+         "pm.test(\"no reviewer / development area\", () => pm.expect(o).to.not.have.any.keys(\"review\", \"developmentArea\", \"reviewedBy\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/observations/mine?status=reviewed&limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "observations",
+        "mine"
+       ],
+       "query": [
+        {
+         "key": "status",
+         "value": "reviewed"
+        },
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Edit MCQ options after it was assigned → 409",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"error code CONFLICT\", () => pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "PATCH",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activities/{{mcqActivityId}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activities",
+        "{{mcqActivityId}}"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"content\": {\n    \"type\": \"mcq\",\n    \"prompt\": \"How are you feeling today?\",\n    \"options\": [\n      {\n        \"id\": \"happy\",\n        \"label\": \"Happy\"\n      },\n      {\n        \"id\": \"calm\",\n        \"label\": \"Calm\"\n      },\n      {\n        \"id\": \"sad\",\n        \"label\": \"Sad\"\n      },\n      {\n        \"id\": \"angry\",\n        \"label\": \"Angry\"\n      }\n    ]\n  }\n}"
+      },
+      "description": "Type and options are frozen once assigned: archive it and create a new one."
+     }
+    }
+   ]
+  },
+  {
+   "name": "12 · Assignments & completions",
+   "description": "Teachers assign directly to students of their classes (source \"direct\"); psychologists only through a review (\"recommended\"). Students answer their own assignments once. Parents see done / not done only, never answers.",
+   "item": [
+    {
+     "name": "Teacher assigns the text activity (saves assignmentId)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+         "const a = pm.response.json().assignment;",
+         "pm.test(\"direct, not done\", () => { pm.expect(a.source).to.eql(\"direct\"); pm.expect(a.completion).to.eql(null); });",
+         "pm.collectionVariables.set(\"assignmentId\", a.id);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/assignments",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "assignments"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"activityId\": \"{{textActivityId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher assigns to a student outside their classes → 422",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 422\", () => pm.response.to.have.status(422));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/assignments",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "assignments"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{student3Id}}\",\n  \"activityId\": \"{{textActivityId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher assigns an archived activity → 422",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+         "pm.test(\"field activityId\", () => pm.expect(pm.response.json().error.details).to.eql({ field: \"activityId\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/assignments",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "assignments"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"activityId\": \"{{archivedActivityId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Psychologist assigns directly → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/assignments",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "assignments"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"{{studentUserId}}\",\n  \"activityId\": \"{{textActivityId}}\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Student — my assignments (saves the recommended ones)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const list = pm.response.json().assignments;",
+         "pm.test(\"own assignments with content\", () => pm.expect(list.length).to.be.at.least(3));",
+         "const byActivity = (id) => list.find((a) => a.activity.id === pm.variables.get(id));",
+         "pm.collectionVariables.set(\"mcqAssignmentId\", byActivity(\"mcqActivityId\").id);",
+         "pm.collectionVariables.set(\"ratingAssignmentId\", byActivity(\"ratingActivityId\").id);",
+         "pm.test(\"allow-listed keys only\", () => list.forEach((a) => pm.expect(a).to.have.all.keys(\"id\", \"activity\", \"assignedAt\", \"isDone\", \"completion\")));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/assignments/mine?limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "assignments",
+        "mine"
+       ],
+       "query": [
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Complete — text → 201",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{assignmentId}}\",\n  \"answer\": {\n    \"type\": \"text\",\n    \"text\": \"I helped my friend at lunch.\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Complete — again → 409 (no reattempts)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+         "pm.test(\"error code CONFLICT\", () => pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{assignmentId}}\",\n  \"answer\": {\n    \"type\": \"text\",\n    \"text\": \"Second try.\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Complete — MCQ with an option that does not exist → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"names the option\", () => pm.expect(pm.response.json().error.details[0].field).to.eql(\"answer.optionId\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{mcqAssignmentId}}\",\n  \"answer\": {\n    \"type\": \"mcq\",\n    \"optionId\": \"excited\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Complete — MCQ answered as text → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"type mismatch\", () => pm.expect(pm.response.json().error.details[0].field).to.eql(\"answer.type\"));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{mcqAssignmentId}}\",\n  \"answer\": {\n    \"type\": \"text\",\n    \"text\": \"Happy\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Complete — MCQ → 201",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 201\", () => pm.response.to.have.status(201));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{mcqAssignmentId}}\",\n  \"answer\": {\n    \"type\": \"mcq\",\n    \"optionId\": \"calm\"\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Complete — rating 6 → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{ratingAssignmentId}}\",\n  \"answer\": {\n    \"type\": \"rating\",\n    \"rating\": 6\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Login — second student (saves student2Token)",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.collectionVariables.set(\"student2Token\", pm.response.json().accessToken);"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/auth/login",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "auth",
+        "login"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"studentId\": \"A{{run}}-002\",\n  \"pin\": \"482913\"\n}"
+      }
+     }
+    },
+    {
+     "name": "Second student answers someone else's assignment → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "POST",
+      "header": [
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       },
+       {
+        "key": "Authorization",
+        "value": "Bearer {{student2Token}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/activity-completions",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "activity-completions"
+       ]
+      },
+      "body": {
+       "mode": "raw",
+       "raw": "{\n  \"assignmentId\": \"{{ratingAssignmentId}}\",\n  \"answer\": {\n    \"type\": \"rating\",\n    \"rating\": 3\n  }\n}"
+      }
+     }
+    },
+    {
+     "name": "Teacher — student's assignments with answers",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const a = pm.response.json().assignments.find((x) => x.id === pm.variables.get(\"assignmentId\"));",
+         "pm.test(\"answer visible to staff\", () => pm.expect(a.completion.answer).to.eql({ type: \"text\", text: \"I helped my friend at lunch.\" }));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{teacherToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/assignments?isDone=true",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "assignments"
+       ],
+       "query": [
+        {
+         "key": "isDone",
+         "value": "true"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Parent — child's activities: done / not done only",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const list = pm.response.json().assignments;",
+         "pm.test(\"allow-listed keys only\", () => list.forEach((a) => pm.expect(a).to.have.all.keys(\"id\", \"title\", \"isDone\")));",
+         "pm.test(\"done flags\", () => { pm.expect(list.find((a) => a.id === pm.variables.get(\"assignmentId\")).isDone).to.eql(true); pm.expect(list.find((a) => a.id === pm.variables.get(\"ratingAssignmentId\")).isDone).to.eql(false); });",
+         "pm.test(\"never the answers\", () => pm.expect(pm.response.text()).to.not.match(/helped my friend|calm|answer/));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/children/{{studentUserId}}/assignments?limit=100",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "children",
+        "{{studentUserId}}",
+        "assignments"
+       ],
+       "query": [
+        {
+         "key": "limit",
+         "value": "100"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "Parent — someone else's child → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/family/children/{{student3Id}}/assignments",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "family",
+        "children",
+        "{{student3Id}}",
+        "assignments"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "13 · Progress",
+   "description": "Growth areas (derived from \"Assign & mark reviewed\" development areas, max 5), streak (Asia/Kolkata days) and the monthly summary (template text; current month live, finished months stored and immutable). Parent-safe for every audience.",
+   "item": [
+    {
+     "name": "Growth areas — parent sees names only",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const g = pm.response.json().growthAreas;",
+         "pm.test(\"derived from the review\", () => pm.expect(g).to.deep.include({ name: \"Managing feelings\" }));",
+         "pm.test(\"at most five, names only\", () => { pm.expect(g.length).to.be.at.most(5); g.forEach((x) => pm.expect(x).to.have.all.keys(\"name\")); });"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/growth-areas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "growth-areas"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Streak — student",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "pm.test(\"completed today → at least 1\", () => pm.expect(pm.response.json().streak.days).to.be.at.least(1));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{studentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/streak",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "streak"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Monthly summary — current month (live)",
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "// Business months are Asia/Kolkata (UTC+05:30) months.",
+         "const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);",
+         "const month = ist.toISOString().slice(0, 7);",
+         "const next = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() + 1, 1)).toISOString().slice(0, 7);",
+         "pm.collectionVariables.set(\"currentMonth\", month);",
+         "pm.collectionVariables.set(\"nextMonth\", next);"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+         "const s = pm.response.json().summary;",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(s).to.have.all.keys(\"studentId\", \"month\", \"text\", \"isFinal\"));",
+         "pm.test(\"live, not final\", () => pm.expect(s.isFinal).to.eql(false));",
+         "pm.test(\"plain template text\", () => pm.expect(s.text).to.match(/^So far in /));",
+         "pm.test(\"nothing clinical\", () => pm.expect(s.text).to.not.match(/Cried|calm-down|significant|monitor sleep|helped my friend/));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/monthly-summaries/{{currentMonth}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "monthly-summaries",
+        "{{currentMonth}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Monthly summary — future month → 400",
+     "event": [
+      {
+       "listen": "prerequest",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "// Business months are Asia/Kolkata (UTC+05:30) months.",
+         "const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);",
+         "const month = ist.toISOString().slice(0, 7);",
+         "const next = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() + 1, 1)).toISOString().slice(0, 7);",
+         "pm.collectionVariables.set(\"currentMonth\", month);",
+         "pm.collectionVariables.set(\"nextMonth\", next);"
+        ]
+       }
+      },
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));",
+         "pm.test(\"month field\", () => pm.expect(pm.response.json().error.details).to.eql([{ field: \"month\", message: \"must not be in the future\" }]));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/monthly-summaries/{{nextMonth}}",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "monthly-summaries",
+        "{{nextMonth}}"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Monthly summary — bad month format → 400",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 400\", () => pm.response.to.have.status(400));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/monthly-summaries/2026-13",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "monthly-summaries",
+        "2026-13"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Progress — psychologist → 200",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 200\", () => pm.response.to.have.status(200));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{psychologistToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/growth-areas",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "growth-areas"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Progress — another school's parent → 404",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{parentBToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/streak",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "streak"
+       ]
+      }
+     }
+    },
+    {
+     "name": "Progress — School Admin → 403",
+     "event": [
+      {
+       "listen": "test",
+       "script": {
+        "type": "text/javascript",
+        "exec": [
+         "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+        ]
+       }
+      }
+     ],
+     "request": {
+      "method": "GET",
+      "header": [
+       {
+        "key": "Authorization",
+        "value": "Bearer {{schoolAdminToken}}"
+       }
+      ],
+      "url": {
+       "raw": "{{baseUrl}}/api/v1/students/{{studentUserId}}/streak",
+       "host": [
+        "{{baseUrl}}"
+       ],
+       "path": [
+        "api",
+        "v1",
+        "students",
+        "{{studentUserId}}",
+        "streak"
        ]
       }
      }

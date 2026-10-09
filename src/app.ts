@@ -5,11 +5,23 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import type { AppConfig } from './config.js';
+import {
+  activitiesRoutes,
+  activityCompletionsRoutes,
+  assignmentsRoutes,
+  familyAssignmentsRoutes,
+  studentAssignmentsRoutes,
+} from './modules/activities/activities.routes.js';
 import { createAuthRepository } from './modules/auth/auth.repository.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import { createAuthenticate } from './modules/auth/authenticate.js';
 import { initDummyHash } from './modules/auth/password.js';
+import { familyObservationsRoutes, observationsRoutes } from './modules/observations/observations.routes.js';
+import progressRoutes from './modules/progress/progress.routes.js';
+import classesRoutes from './modules/schools/classes.routes.js';
 import schoolsRoutes from './modules/schools/schools.routes.js';
+import parentStudentsRoutes from './modules/users/parent-students.routes.js';
+import usersRoutes from './modules/users/users.routes.js';
 import type { Db } from './shared/db/prisma.js';
 import { errorHandler } from './shared/errors/index.js';
 import { assertRouteDeclaresAccess } from './shared/rbac/index.js';
@@ -19,9 +31,11 @@ export interface BuildAppOptions {
   config: AppConfig;
   db: Db;
   isLoggerEnabled?: boolean;
+  /** Clock for business-date rules (streaks, monthly summaries). Tests may fix it. */
+  now?: () => Date;
 }
 
-export async function buildApp({ config, db, isLoggerEnabled = false }: BuildAppOptions): Promise<FastifyInstance> {
+export async function buildApp({ config, db, isLoggerEnabled = false, now = () => new Date() }: BuildAppOptions): Promise<FastifyInstance> {
   await initDummyHash();
 
   const app = Fastify({
@@ -50,6 +64,18 @@ export async function buildApp({ config, db, isLoggerEnabled = false }: BuildApp
 
   await app.register(authRoutes, { prefix: '/api/v1/auth', db, config });
   await app.register(schoolsRoutes, { prefix: '/api/v1/schools', db });
+  await app.register(usersRoutes, { prefix: '/api/v1/users', db });
+  await app.register(parentStudentsRoutes, { prefix: '/api/v1/parent-students', db });
+  await app.register(classesRoutes, { prefix: '/api/v1/classes', db });
+  await app.register(observationsRoutes, { prefix: '/api/v1/observations', db });
+  await app.register(activitiesRoutes, { prefix: '/api/v1/activities', db });
+  await app.register(assignmentsRoutes, { prefix: '/api/v1/assignments', db });
+  await app.register(activityCompletionsRoutes, { prefix: '/api/v1/activity-completions', db });
+  await app.register(studentAssignmentsRoutes, { prefix: '/api/v1/students', db });
+  await app.register(progressRoutes, { prefix: '/api/v1/students', db, now });
+  // Family app (parents): parent-safe responses only.
+  await app.register(familyObservationsRoutes, { prefix: '/api/v1/family/observations', db });
+  await app.register(familyAssignmentsRoutes, { prefix: '/api/v1/family/children', db });
 
   return app;
 }

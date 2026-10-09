@@ -77,6 +77,18 @@ export function createRefreshTokenRepository(db: Db) {
                            WHERE jti = ${a.jti}::uuid AND user_id = ${a.userId}::uuid
                              AND revoked_at IS NOT NULL)`;
     },
+
+    // Logout: end the session the token belongs to by revoking every live token in its
+    // family (the token itself and any successor rotated from it). Other logins of the
+    // same user are separate families and stay live. The user_id match means a token can
+    // only ever end its own owner's session.
+    async revokeFamily(a: { jti: string; userId: string }): Promise<void> {
+      await db.$executeRaw`
+        UPDATE refresh_tokens SET revoked_at = now()
+        WHERE revoked_at IS NULL
+          AND family_id = (SELECT family_id FROM refresh_tokens
+                           WHERE jti = ${a.jti}::uuid AND user_id = ${a.userId}::uuid)`;
+    },
   };
 }
 

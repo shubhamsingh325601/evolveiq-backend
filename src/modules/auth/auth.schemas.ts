@@ -9,20 +9,20 @@ const FULL_NAME = /^[^\u0000-\u001F\u007F]*[^\s\u0000-\u001F\u007F][^\u0000-\u00
 // The exact "email" format the previous Ajv validation used (ajv-formats, full mode).
 const EMAIL = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 
-const FullNameSchema = z
+export const FullNameSchema = z
   .string()
   .min(1)
   .max(100)
   .regex(FULL_NAME, 'must not be blank or contain control characters')
   .meta({ example: 'Kavya S' });
-const EmailSchema = z
+export const EmailSchema = z
   .string()
   .max(254)
   .regex(EMAIL, 'must be a valid email address')
   .meta({ format: 'email', example: 'kavya@school-a.test' });
 // NIST SP 800-63B style: length over composition rules. Max bounds hashing cost.
 const PasswordSchema = z.string().min(10).max(128).meta({ example: 'Correct-Horse-1' });
-const StudentIdSchema = z
+export const StudentIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9-]{3,32}$/, 'must be 3–32 letters, digits or hyphens')
   .meta({ example: 'A-1001' });
@@ -119,3 +119,7 @@ export const RefreshBodySchema = z
   .meta({ id: 'RefreshRequest' });
 
 export const RefreshResponseSchema = z.object(TOKEN_FIELDS).meta({ id: 'TokenResponse' });
+
+export const LogoutBodySchema = z
+  .strictObject({ refreshToken: z.string().min(1).max(2048) })
+  .meta({ id: 'LogoutRequest' });
