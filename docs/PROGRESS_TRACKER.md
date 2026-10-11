@@ -12,6 +12,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Base `schema.prisma` (School, User, Class, Observation, Activity, Assignment, ActivityCompletion, ProgressSummary) | Done | | on `API`, not yet merged to `main`. Migrations `people`, `workflow`, `progress`; ProgressSummary is `monthly_summaries` (growth areas / streaks are derived) |
 | Auth: JWT access/refresh, login endpoint | Done | | on `API`, not yet merged to `main` |
 | RBAC middleware | Done | | on `API`, not yet merged to `main`. `shared/rbac` guard + startup check that every route declares roles |
+| Frontend integration support | Done | | on `feature/infra-frontend-integration`, not yet merged. Psychologists list and view every school, every role views its own; `reviewedAt` on teachers' observations; `assignedAt` / `completedAt` on parents' activity list; `npm run db:seed-demo` (development only) creates the frontend's demo people |
 | CI: lint + typecheck + test on PR | Not Started | | |
 
 ## Auth & users
