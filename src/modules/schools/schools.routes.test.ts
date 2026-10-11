@@ -71,24 +71,55 @@ describe('RBAC — shared guard on every school endpoint', () => {
     expect((await list('', refreshToken)).status).toBe(401);
   });
 
+  const FORBIDDEN = { error: { code: 'FORBIDDEN', message: 'You are not allowed to perform this action.' } };
+  const NOT_FOUND = { error: { code: 'NOT_FOUND', message: 'School not found.' } };
+
   test.each(['school_admin', 'teacher', 'parent', 'psychologist', 'student'])(
-    'authenticated %s (not Platform Admin) → 403 FORBIDDEN on all four endpoints, nothing changes',
+    'authenticated %s (not Platform Admin) → 403 FORBIDDEN on create and rename, nothing changes',
     async (role) => {
       const before = await schoolCount();
-      for (const [method, url, body] of calls()) {
+      for (const [method, url, body] of calls().filter(([method]) => method !== 'GET')) {
         const r = await ctx.send(method, url, { body, token: roleTokens[role] });
         expect(r.status, `${role} ${method} ${url}`).toBe(403);
-        expect(r.body).toEqual({ error: { code: 'FORBIDDEN', message: 'You are not allowed to perform this action.' } });
+        expect(r.body).toEqual(FORBIDDEN);
       }
       expect(await schoolCount()).toBe(before);
       expect(await dbName(SCHOOL_A)).toBe('Demo School A');
     },
   );
 
-  test('the guard runs before validation: non-admins get 403 even for an invalid request', async () => {
+  test.each(['school_admin', 'teacher', 'parent', 'student'])(
+    'a %s cannot list schools (403) but can view their own; another school → 404',
+    async (role) => {
+      const r = await list('', roleTokens[role]);
+      expect(r.status).toBe(403);
+      expect(r.body).toEqual(FORBIDDEN);
+
+      const own = await view(SCHOOL_A, roleTokens[role]);
+      expect(own.status).toBe(200);
+      expect(own.body.school).toMatchObject({ id: SCHOOL_A, name: 'Demo School A' });
+
+      const other = await view(SCHOOL_B, roleTokens[role]);
+      expect(other.status).toBe(404);
+      expect(other.body).toEqual(NOT_FOUND);
+    },
+  );
+
+  test('a Psychologist (who works across schools) lists and views every school', async () => {
+    const r = await list('', roleTokens.psychologist);
+    expect(r.status).toBe(200);
+    expect(r.body.schools.map((s: { id: string }) => s.id)).toEqual(expect.arrayContaining([SCHOOL_A, SCHOOL_B]));
+    for (const id of [SCHOOL_A, SCHOOL_B]) {
+      const v = await view(id, roleTokens.psychologist);
+      expect(v.status).toBe(200);
+      expect(v.body.school.id).toBe(id);
+    }
+  });
+
+  test('the guard runs before validation: a role that may not call a route gets 403 even for an invalid request', async () => {
     expect((await create({ bogus: true }, roleTokens.teacher)).status).toBe(403);
     expect((await list('?sortBy=password', roleTokens.school_admin)).status).toBe(403);
-    expect((await view('not-a-uuid', roleTokens.parent)).status).toBe(403);
+    expect((await rename('not-a-uuid', { bogus: true }, roleTokens.parent)).status).toBe(403);
     // …and unauthenticated callers get 401 first.
     expect((await ctx.post(BASE, { bogus: true })).status).toBe(401);
   });

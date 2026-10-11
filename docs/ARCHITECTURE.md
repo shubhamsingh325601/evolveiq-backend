@@ -96,6 +96,8 @@ live in services, not routes or controllers-as-routes. Classes live in the
   per audience): their own observations with status; their child's activities
   as done / not done; streak; growth-area names; monthly summary. Parent-only
   endpoints live under `/api/v1/family/`.
+- Schools: Platform Admins and Psychologists read every school (the review
+  queue filters by school); everyone else reads only their own.
 - Teachers and parents see only the observations they wrote.
 
 ## Time

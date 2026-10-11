@@ -1,10 +1,11 @@
 // HTTP layer only: validation (Zod), RBAC wiring, status codes, headers.
-// Every school route is Platform Admin-only through the shared RBAC guard:
-//   Request → authenticate (401) → requireRole(PlatformAdmin) (403) → route → service → repository
+//   Request → authenticate (401) → requireRole(...) (403) → route → service → repository
+// Create and rename: Platform Admin. List: Platform Admin and Psychologist. View: every role,
+// limited by the service to the caller's own school (Platform Admin and Psychologist: any).
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import type { Db } from '../../shared/db/prisma.js';
 import { errorResponses } from '../../shared/errors/index.js';
-import { describeRoles, requireRole, Role } from '../../shared/rbac/index.js';
+import { actorOf, describeRoles, requireRole, Role } from '../../shared/rbac/index.js';
 import { createSchoolsRepository } from './schools.repository.js';
 import {
   CreateSchoolBodySchema,
@@ -24,6 +25,10 @@ const schoolsRoutes: FastifyPluginAsyncZod<SchoolsRoutesOptions> = async (app, {
   const service = createSchoolsService({ repository: createSchoolsRepository(db) });
 
   const platformAdminOnly = requireRole(Role.PlatformAdmin);
+  const listers = requireRole(Role.PlatformAdmin, Role.Psychologist);
+  const viewers = requireRole(
+    Role.PlatformAdmin, Role.Psychologist, Role.SchoolAdmin, Role.Teacher, Role.Parent, Role.Student,
+  );
   const guarded = { onRequest: [app.authenticate, platformAdminOnly] };
   const docs = {
     tags: ['Schools'],
@@ -48,12 +53,13 @@ const schoolsRoutes: FastifyPluginAsyncZod<SchoolsRoutesOptions> = async (app, {
 
   // GET /api/v1/schools — paginated, sortable, filterable list
   app.get('', {
-    ...guarded,
+    onRequest: [app.authenticate, listers],
     schema: {
       ...docs,
       summary: 'List schools',
       description:
-        `${docs.description} Paginated in the database (\`page\`, \`limit\` ≤ 100), sortable by ` +
+        `${describeRoles(listers.allowedRoles)} Psychologists read it to filter the review queue ` +
+        'by school. Paginated in the database (`page`, `limit` ≤ 100), sortable by ' +
         'an allowlist of fields (`sortBy`, `sortOrder`), filterable by a case-insensitive name ' +
         'substring (`name`).',
       querystring: ListSchoolsQuerySchema,
@@ -64,14 +70,17 @@ const schoolsRoutes: FastifyPluginAsyncZod<SchoolsRoutesOptions> = async (app, {
 
   // GET /api/v1/schools/:schoolId — view one school
   app.get('/:schoolId', {
-    ...guarded,
+    onRequest: [app.authenticate, viewers],
     schema: {
       ...docs,
       summary: 'View a school',
+      description:
+        `${describeRoles(viewers.allowedRoles)} Platform Admins and Psychologists can view any ` +
+        "school; everyone else only their own (another school → 404, the same as a missing one).",
       params: SchoolIdParamsSchema,
       response: { 200: SchoolResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
     },
-    handler: async (request) => ({ school: await service.getById(request.params.schoolId) }),
+    handler: async (request) => ({ school: await service.getById(actorOf(request), request.params.schoolId) }),
   });
 
   // PATCH /api/v1/schools/:schoolId — rename a school

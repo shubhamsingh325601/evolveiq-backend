@@ -1283,7 +1283,7 @@
   },
   {
    "name": "5 · Schools (Platform Admin)",
-   "description": "Platform Admin-only school management. Uses {{platformToken}} (folder 1) and, for the 403 checks, {{teacherToken}} / {{schoolAdminToken}} (folders 3–4). Run after folders 1–4.",
+   "description": "School management: Platform Admin writes, Psychologists list, everyone else views only their own school. Uses {{platformToken}} (folder 1) and, for the 403 checks, {{teacherToken}} / {{schoolAdminToken}} (folders 3–4). Run after folders 1–4.",
    "item": [
     {
      "name": "Create School (saves schoolId)",

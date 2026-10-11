@@ -4,6 +4,7 @@ import type { SchoolRecord, SchoolsRepository } from './schools.repository.js';
 import { ListSchoolsQuerySchema } from './schools.schemas.js';
 import { buildPagination, createSchoolsService } from './schools.service.js';
 import { AppError } from '../../shared/errors/index.js';
+import type { Actor } from '../../shared/rbac/index.js';
 
 const ID = '33333333-3333-4333-8333-333333333333';
 const record = (over: Partial<SchoolRecord> = {}): SchoolRecord => ({
@@ -37,18 +38,39 @@ describe('create', () => {
 });
 
 describe('getById', () => {
+  const OTHER_ID = '44444444-4444-4444-8444-444444444444';
+  const actor = (role: Actor['role'], schoolId: string | null): Actor => ({ userId: 'u-1', role, schoolId });
+
   test('returns the school', async () => {
     repo.findById.mockResolvedValue(record());
-    expect((await service.getById(ID)).id).toBe(ID);
+    expect((await service.getById(actor('platform_admin', null), ID)).id).toBe(ID);
     expect(repo.findById).toHaveBeenCalledWith(ID);
   });
 
   test('missing school → typed 404 NOT_FOUND', async () => {
     repo.findById.mockResolvedValue(null);
-    const err = await service.getById(ID).catch((e: unknown) => e);
+    const err = await service.getById(actor('platform_admin', null), ID).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(AppError);
     expect(err).toMatchObject({ statusCode: 404, code: 'NOT_FOUND', message: 'School not found.' });
   });
+
+  test.each(['platform_admin', 'psychologist'] as const)('a %s sees any school', async (role) => {
+    repo.findById.mockResolvedValue(record());
+    expect((await service.getById(actor(role, null), ID)).id).toBe(ID);
+  });
+
+  test.each(['school_admin', 'teacher', 'parent', 'student'] as const)(
+    'a %s sees their own school, and another school is a 404 without touching the database',
+    async (role) => {
+      repo.findById.mockResolvedValue(record());
+      expect((await service.getById(actor(role, ID), ID)).id).toBe(ID);
+
+      repo.findById.mockClear();
+      const err = await service.getById(actor(role, OTHER_ID), ID).catch((e: unknown) => e);
+      expect(err).toMatchObject({ statusCode: 404, code: 'NOT_FOUND', message: 'School not found.' });
+      expect(repo.findById).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('rename', () => {

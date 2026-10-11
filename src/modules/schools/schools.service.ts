@@ -1,6 +1,11 @@
 // Business rules for school management. No HTTP, no SQL.
+//
+// Who sees which school: Platform Admins and Psychologists (who work across schools and filter
+// the review queue by school) see every school; everyone else only their own. Another school
+// looks exactly like a missing one (404). Only Platform Admins create and rename schools.
 import { Errors } from '../../shared/errors/index.js';
 import { buildPagination, type Pagination } from '../../shared/pagination/index.js';
+import { Role, type Actor } from '../../shared/rbac/index.js';
 import type { SchoolRecord, SchoolsRepository } from './schools.repository.js';
 import type { ListSchoolsQuery, SchoolDto } from './schools.schemas.js';
 
@@ -40,7 +45,9 @@ export function createSchoolsService(deps: { repository: SchoolsRepository }) {
     return { schools: items.map(toDto), pagination: buildPagination(page, limit, total) };
   }
 
-  async function getById(id: string): Promise<SchoolDto> {
+  async function getById(actor: Actor, id: string): Promise<SchoolDto> {
+    const seesEverySchool = actor.role === Role.PlatformAdmin || actor.role === Role.Psychologist;
+    if (!seesEverySchool && actor.schoolId !== id) throw Errors.notFound('School');
     const school = await repository.findById(id);
     if (!school) throw Errors.notFound('School');
     return toDto(school);

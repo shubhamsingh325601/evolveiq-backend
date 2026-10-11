@@ -172,7 +172,7 @@ Layered modules exactly as in `docs/ARCHITECTURE.md`: **routes** (HTTP + Zod val
 │   │   │   ├── refresh-token.{service,repository}.ts
 │   │   │   └── access-token.ts, refresh-token.ts, password.ts
 │   │   ├── schools/
-│   │   │   ├── schools.routes.ts        # 4 thin routes, Platform Admin only
+│   │   │   ├── schools.routes.ts        # 4 thin routes: Platform Admin writes; Psychologist lists; everyone views their own
 │   │   │   ├── schools.schemas.ts       # Zod: body, :schoolId, list query (allowlists), responses
 │   │   │   ├── schools.service.ts       # business rules, pagination metadata, 404s
 │   │   │   ├── schools.repository.ts    # Prisma queries (DB-level paginate/sort/filter)
@@ -329,9 +329,9 @@ How it works: only the JTI is stored; one SQL statement revokes the token *only 
 
 Expired/revoked rows are not purged automatically: `DELETE FROM refresh_tokens WHERE expires_at < now() - interval '1 day';`
 
-### 6.4 Schools (Platform Admin only)
+### 6.4 Schools
 
-**Auth:** Bearer token. **RBAC:** Platform Admin only, via the shared guard. Any other role → `403 FORBIDDEN`; no/invalid token or inactive account → `401 UNAUTHENTICATED`.
+**Auth:** Bearer token. **RBAC** (shared guard): create and rename are Platform Admin only. The list is Platform Admin and Psychologist (who filters the review queue by school). Viewing one school is open to every role, but only Platform Admins and Psychologists see any school; everyone else sees only their own, and another school → `404` (the same as a missing one). A role outside a route's list → `403 FORBIDDEN`; no/invalid token or inactive account → `401 UNAUTHENTICATED`.
 
 A school is `{ "id": "uuid", "name": "…", "createdAt": "ISO-8601", "updatedAt": "ISO-8601" }`.
 
