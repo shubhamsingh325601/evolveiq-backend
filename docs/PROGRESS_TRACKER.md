@@ -7,46 +7,46 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 ## Setup
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| Project scaffold (Fastify + TS) | Done | | on `evolviq-backend`, not yet merged |
-| Prisma + Postgres via Docker Compose | Done | | on `evolviq-backend`, not yet merged. Sessions pinned to UTC (timezone fix) |
-| Base `schema.prisma` (School, User, Class, Observation, Activity, Assignment, ActivityCompletion, ProgressSummary) | Done | | on `evolviq-backend`, not yet merged. Migrations `people`, `workflow`, `progress`; ProgressSummary is `monthly_summaries` (growth areas / streaks are derived) |
-| Auth: JWT access/refresh, login endpoint | Done | | on `evolviq-backend`, not yet merged |
-| RBAC middleware | Done | | on `evolviq-backend`, not yet merged. `shared/rbac` guard + startup check that every route declares roles |
+| Project scaffold (Fastify + TS) | Done | | on `API`, not yet merged to `main` |
+| Prisma + Postgres via Docker Compose | Done | | on `API`, not yet merged to `main`. Sessions pinned to UTC (timezone fix) |
+| Base `schema.prisma` (School, User, Class, Observation, Activity, Assignment, ActivityCompletion, ProgressSummary) | Done | | on `API`, not yet merged to `main`. Migrations `people`, `workflow`, `progress`; ProgressSummary is `monthly_summaries` (growth areas / streaks are derived) |
+| Auth: JWT access/refresh, login endpoint | Done | | on `API`, not yet merged to `main` |
+| RBAC middleware | Done | | on `API`, not yet merged to `main`. `shared/rbac` guard + startup check that every route declares roles |
 | CI: lint + typecheck + test on PR | Not Started | | |
 
 ## Auth & users
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| Login/session endpoints | Done | | on `evolviq-backend`, not yet merged. Login, refresh (rotating), logout (current session; access token expires on its own) |
-| Role-scoped user endpoints | Done | | on `evolviq-backend`, not yet merged. `/users` list / view / edit / deactivate / reactivate; `/parent-students` links |
+| Login/session endpoints | Done | | on `API`, not yet merged to `main`. Login, refresh (rotating), logout (current session; access token expires on its own) |
+| Role-scoped user endpoints | Done | | on `API`, not yet merged to `main`. `/users` list / view / edit / deactivate / reactivate; `/parent-students` links |
 
 ## Observations
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| Create observation (parent/teacher variants) | Done | | on `evolviq-backend`, not yet merged. Parent: `/family/observations`; Teacher: `/observations` |
-| Review queue list + filters (Pending/Significant/From parents/Reviewed/school) | Done | | on `evolviq-backend`, not yet merged |
-| Observation detail + related history | Done | | on `evolviq-backend`, not yet merged |
-| Review action (tag area, note, assign/no-action) | Done | | on `evolviq-backend`, not yet merged. One DB transaction with the recommended assignments; re-review → 409 |
+| Create observation (parent/teacher variants) | Done | | on `API`, not yet merged to `main`. Parent: `/family/observations`; Teacher: `/observations` |
+| Review queue list + filters (Pending/Significant/From parents/Reviewed/school) | Done | | on `API`, not yet merged to `main` |
+| Observation detail + related history | Done | | on `API`, not yet merged to `main` |
+| Review action (tag area, note, assign/no-action) | Done | | on `API`, not yet merged to `main`. One DB transaction with the recommended assignments; re-review → 409 |
 
 ## Activities
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| Activity library CRUD (simple form) | Done | | on `evolviq-backend`, not yet merged. Global library, archive (no delete), 5 types, frozen once assigned |
-| Assignment (direct + recommended) | Done | | on `evolviq-backend`, not yet merged |
-| Completion submission endpoint | Done | | on `evolviq-backend`, not yet merged. One completion per assignment |
+| Activity library CRUD (simple form) | Done | | on `API`, not yet merged to `main`. Global library, archive (no delete), 5 types, frozen once assigned |
+| Assignment (direct + recommended) | Done | | on `API`, not yet merged to `main` |
+| Completion submission endpoint | Done | | on `API`, not yet merged to `main`. One completion per assignment |
 
 ## Progress
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| Growth areas (5-cap) calculation | Done | | on `evolviq-backend`, not yet merged. Derived from "Assign & mark reviewed" development areas |
-| Monthly summary generation (Parent-safe) | Done | | on `evolviq-backend`, not yet merged. Template text; current month live, finished months stored and immutable (IST months) |
-| Streak calculation | Done | | on `evolviq-backend`, not yet merged. Asia/Kolkata days |
+| Growth areas (5-cap) calculation | Done | | on `API`, not yet merged to `main`. Derived from "Assign & mark reviewed" development areas |
+| Monthly summary generation (Parent-safe) | Done | | on `API`, not yet merged to `main`. Template text; current month live, finished months stored and immutable (IST months) |
+| Streak calculation | Done | | on `API`, not yet merged to `main`. Asia/Kolkata days |
 
 ## School / Platform administration
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| School Admin CRUD (students/teachers/classes/parents) | Done | | on `evolviq-backend`, not yet merged. Create via `/auth/register`; list/view/edit/deactivate/reactivate via `/users`; parent links; classes with teachers / students. No delete (deactivation instead) |
-| Platform Admin CRUD (schools/users) | Done | | on `evolviq-backend`, not yet merged. Schools: create/list/view/rename. Users: create/list/view/edit/deactivate/reactivate |
+| School Admin CRUD (students/teachers/classes/parents) | Done | | on `API`, not yet merged to `main`. Create via `/auth/register`; list/view/edit/deactivate/reactivate via `/users`; parent links; classes with teachers / students. No delete (deactivation instead) |
+| Platform Admin CRUD (schools/users) | Done | | on `API`, not yet merged to `main`. Schools: create/list/view/rename. Users: create/list/view/edit/deactivate/reactivate |
 
 ## Quality
 | Item | Status | Owner | Notes |
