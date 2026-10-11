@@ -128,6 +128,7 @@ export const TeacherObservationSchema = z
     learningBehaviourArea: LearningBehaviourAreaSchema.nullable(),
     status: StatusSchema,
     teacherOnlyNote: z.string().nullable().meta({ description: "The psychologist's note for the teacher, once reviewed." }),
+    reviewedAt: Iso.nullable().meta({ description: 'When it was reviewed; null while pending.' }),
     createdAt: Iso,
   })
   .meta({ id: 'TeacherObservation' });

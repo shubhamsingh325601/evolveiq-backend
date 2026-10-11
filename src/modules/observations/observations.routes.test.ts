@@ -19,7 +19,7 @@ import {
 const OBS = '/api/v1/observations';
 const FAMILY = '/api/v1/family/observations';
 const PARENT_KEYS = ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'when'];
-const TEACHER_KEYS = [...PARENT_KEYS, 'learningBehaviourArea', 'level', 'teacherOnlyNote'].sort();
+const TEACHER_KEYS = [...PARENT_KEYS, 'learningBehaviourArea', 'level', 'reviewedAt', 'teacherOnlyNote'].sort();
 
 let ctx: TestContext;
 let rootToken: string;

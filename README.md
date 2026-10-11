@@ -111,7 +111,7 @@ npm run test:postman -- --env-var run=$RANDOM   # Postman collection via Newman 
 | B14 | Monthly summary: template text, no AI, no cron. Current month built live; a finished month is stored once and never changes. |
 | B15 | Streak: consecutive days with ≥ 1 completion, all 7 days, counting from yesterday if today isn't done yet. |
 | B16 | Days and months are Asia/Kolkata; timestamps are stored in UTC. |
-| B17 | Parents get only: their own observations with status, their child's activities done / not done, streak, growth-area names, monthly summary. |
+| B17 | Parents get only: their own observations with status, their child's activities done / not done (with the dates they were set and finished), streak, growth-area names, monthly summary. |
 
 Implementation choices within those rules (smallest reasonable option, flagged for review):
 
@@ -429,7 +429,7 @@ A class is `{ id, schoolId, name, createdAt, updatedAt }`. Teacher / student of 
 Create body: `{ studentId, area, description, when, howOften }` (+ teachers: optional `level`, `learningBehaviourArea`). Review body: `{ "outcome": "assigned", "activityIds": [1–10 ids], "developmentArea"?, "teacherOnlyNote"? }` or `{ "outcome": "no_action", "developmentArea"?, "teacherOnlyNote"? }`.
 
 - **ParentObservation** = `id, studentId, area, description, when, howOften, status, createdAt` — nothing else.
-- **TeacherObservation** = the above + `level, learningBehaviourArea, teacherOnlyNote`.
+- **TeacherObservation** = the above + `level, learningBehaviourArea, teacherOnlyNote, reviewedAt` (null while pending).
 - **ReviewObservation** = everything, with `student`, `author`, and `review { outcome, developmentArea, teacherOnlyNote, reviewedBy, reviewedAt, activityIds }` (null while pending).
 
 ### 6.10 Activities, assignments and completions
@@ -445,7 +445,7 @@ Create body: `{ studentId, area, description, when, howOften }` (+ teachers: opt
 | `GET /api/v1/assignments/mine?isDone&page&limit` | Student | `200 { "assignments" }` (activity content + own answer) | 400, 401, 403, 500 |
 | `POST /api/v1/activity-completions` `{ assignmentId, answer }` | Student (own assignment) | `201 { "completion" }` | 400, 401, 403, 404, **409** (already completed), 500 |
 | `GET /api/v1/students/:studentId/assignments` | Teacher (own classes), Psychologist | `200 { "assignments" }` (with answers) | 400, 401, 403, 404, 500 |
-| `GET /api/v1/family/children/:studentId/assignments` | Parent (own children) | `200 { "assignments": [{ id, title, isDone }] }` | 400, 401, 403, 404, 500 |
+| `GET /api/v1/family/children/:studentId/assignments` | Parent (own children) | `200 { "assignments": [{ id, title, isDone, assignedAt, completedAt }] }` (`completedAt` null while to do) | 400, 401, 403, 404, 500 |
 
 `content` / `answer` are discriminated unions on `type`: `mcq` `{ prompt, options: [{ id, label }] (2–6) }` → `{ optionId }`; `text` `{ prompt }` → `{ text }`; `image_pick` `{ prompt, options: [{ id, imageUrl, label? }] }` → `{ optionId }`; `rating` `{ prompt }` → `{ rating: 1–5 }`; `media_response` `{ prompt, mediaUrl }` → `{ text }`. URLs must be http(s).
 

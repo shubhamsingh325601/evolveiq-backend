@@ -55,6 +55,7 @@ export function toTeacherDto(o: ObservationRecord): TeacherObservationDto {
     learningBehaviourArea: o.learningBehaviourArea,
     status: o.status,
     teacherOnlyNote: o.teacherOnlyNote,
+    reviewedAt: o.reviewedAt?.toISOString() ?? null,
     createdAt: o.createdAt.toISOString(),
   };
 }

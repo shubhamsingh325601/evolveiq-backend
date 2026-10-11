@@ -50,12 +50,18 @@ describe('toParentDto — parent allow-list', () => {
 });
 
 describe('toTeacherDto — teacher allow-list', () => {
-  test('their observation, status and the teacher-only note; no reviewer, development area or assignments', () => {
+  test('their observation, status, review date and the teacher-only note; no reviewer, development area or assignments', () => {
     const dto = toTeacherDto(reviewed);
     expect(Object.keys(dto).sort()).toEqual(
-      ['area', 'createdAt', 'description', 'howOften', 'id', 'learningBehaviourArea', 'level', 'status', 'studentId', 'teacherOnlyNote', 'when'],
+      ['area', 'createdAt', 'description', 'howOften', 'id', 'learningBehaviourArea', 'level', 'reviewedAt', 'status', 'studentId', 'teacherOnlyNote', 'when'],
     );
-    expect(dto).toMatchObject({ level: 'significant', learningBehaviourArea: 'self_control', teacherOnlyNote: 'CLINICAL-NOTE' });
+    expect(dto).toMatchObject({
+      level: 'significant',
+      learningBehaviourArea: 'self_control',
+      teacherOnlyNote: 'CLINICAL-NOTE',
+      reviewedAt: '2026-10-02T10:00:00.000Z',
+    });
+    expect(toTeacherDto({ ...reviewed, status: 'pending', reviewOutcome: null, developmentArea: null, teacherOnlyNote: null, reviewedAt: null, reviewedBy: null, assignments: [] }).reviewedAt).toBeNull();
     const raw = JSON.stringify(dto);
     for (const secret of ['REVIEWER-NAME', '5555', '6666', 'developmentArea', 'assigned']) expect(raw, secret).not.toContain(secret);
   });

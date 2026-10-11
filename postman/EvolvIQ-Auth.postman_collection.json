@@ -5208,7 +5208,7 @@
         "exec": [
          "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
          "const o = pm.response.json().observation;",
-         "pm.test(\"allow-listed keys only\", () => pm.expect(o).to.have.all.keys(\"id\", \"studentId\", \"area\", \"description\", \"when\", \"howOften\", \"status\", \"createdAt\", \"level\", \"learningBehaviourArea\", \"teacherOnlyNote\"));",
+         "pm.test(\"allow-listed keys only\", () => pm.expect(o).to.have.all.keys(\"id\", \"studentId\", \"area\", \"description\", \"when\", \"howOften\", \"status\", \"createdAt\", \"level\", \"learningBehaviourArea\", \"teacherOnlyNote\", \"reviewedAt\"));",
          "pm.test(\"pending\", () => pm.expect(o.status).to.eql(\"pending\"));",
          "pm.collectionVariables.set(\"observationId\", o.id);"
         ]
@@ -6739,7 +6739,7 @@
         "exec": [
          "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
          "const list = pm.response.json().assignments;",
-         "pm.test(\"allow-listed keys only\", () => list.forEach((a) => pm.expect(a).to.have.all.keys(\"id\", \"title\", \"isDone\")));",
+         "pm.test(\"allow-listed keys only\", () => list.forEach((a) => pm.expect(a).to.have.all.keys(\"id\", \"title\", \"isDone\", \"assignedAt\", \"completedAt\")));",
          "pm.test(\"done flags\", () => { pm.expect(list.find((a) => a.id === pm.variables.get(\"assignmentId\")).isDone).to.eql(true); pm.expect(list.find((a) => a.id === pm.variables.get(\"ratingAssignmentId\")).isDone).to.eql(false); });",
          "pm.test(\"never the answers\", () => pm.expect(pm.response.text()).to.not.match(/helped my friend|calm|answer/));"
         ]

@@ -72,7 +72,8 @@ export const observationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesOptions
       summary: 'My observations (teacher)',
       description:
         `${describeRoles(teacherOnly.allowedRoles)} Only observations this teacher wrote — never other ` +
-        "teachers' or parents' — with status and the psychologist's teacher-only note. Newest first.",
+        "teachers' or parents' — with status, when it was reviewed and the psychologist's " +
+        'teacher-only note. Newest first.',
       querystring: ListOwnObservationsQuerySchema,
       response: { 200: TeacherObservationListResponseSchema, ...errorResponses(400, 401, 403, 500) },
     },

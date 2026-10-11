@@ -200,7 +200,13 @@ export type StudentAssignmentDto = z.output<typeof StudentAssignmentSchema>;
 
 /** Parent view: the activity and whether it is done. Never the child's answer. */
 export const FamilyAssignmentSchema = z
-  .object({ id: Id, title: z.string(), isDone: z.boolean() })
+  .object({
+    id: Id,
+    title: z.string(),
+    isDone: z.boolean(),
+    assignedAt: Iso,
+    completedAt: Iso.nullable().meta({ description: 'When the child finished it; null while still to do.' }),
+  })
   .meta({ id: 'FamilyAssignment' });
 export type FamilyAssignmentDto = z.output<typeof FamilyAssignmentSchema>;
 

@@ -91,9 +91,15 @@ export function toStudentAssignmentDto(a: AssignmentRecord): StudentAssignmentDt
   };
 }
 
-/** Parents: the activity and done / not done. Never the answer. */
+/** Parents: the activity, done / not done and when. Never the answer, source or assigner. */
 export function toFamilyAssignmentDto(a: AssignmentRecord): FamilyAssignmentDto {
-  return { id: a.id, title: a.activity.title, isDone: a.completion !== null };
+  return {
+    id: a.id,
+    title: a.activity.title,
+    isDone: a.completion !== null,
+    assignedAt: a.createdAt.toISOString(),
+    completedAt: a.completion?.completedAt.toISOString() ?? null,
+  };
 }
 
 export function createActivitiesService(deps: { repository: ActivitiesRepository; students: StudentScopeRepository }) {

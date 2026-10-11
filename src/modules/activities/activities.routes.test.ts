@@ -358,10 +358,13 @@ describe('student and parent views', () => {
 
     const r = await ctx.get(`/api/v1/family/children/${a.student.id}/assignments?limit=100`, a.parent.token);
     expect(r.status).toBe(200);
-    for (const item of r.body.assignments) expect(Object.keys(item).sort()).toEqual(['id', 'isDone', 'title']);
+    for (const item of r.body.assignments) expect(Object.keys(item).sort()).toEqual(['assignedAt', 'completedAt', 'id', 'isDone', 'title']);
     const byId = Object.fromEntries(r.body.assignments.map((x: { id: string; isDone: boolean }) => [x.id, x.isDone]));
     expect(byId[done.assignmentId]).toBe(true);
     expect(byId[todo.assignmentId]).toBe(false);
+    const itemById = Object.fromEntries(r.body.assignments.map((x: { id: string }) => [x.id, x]));
+    expect(itemById[done.assignmentId]).toMatchObject({ assignedAt: expect.any(String), completedAt: expect.any(String) });
+    expect(itemById[todo.assignmentId]).toMatchObject({ assignedAt: expect.any(String), completedAt: null });
     const raw = JSON.stringify(r.body);
     for (const secret of ['Private diary entry', 'answer', 'source', 'assignedBy', a.teacher.id, 'observationId']) expect(raw, secret).not.toContain(secret);
   });

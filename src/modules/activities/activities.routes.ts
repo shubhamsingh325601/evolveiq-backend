@@ -217,8 +217,9 @@ export const familyAssignmentsRoutes: FastifyPluginAsyncZod<ActivitiesRoutesOpti
       security,
       summary: "My child's activities (parent)",
       description:
-        `${describeRoles(parentOnly.allowedRoles)} Each activity's title and whether it is done. ` +
-        "Never the child's answers. Only the parent's own children (anyone else → 404).",
+        `${describeRoles(parentOnly.allowedRoles)} Each activity's title, whether it is done, and ` +
+        "when it was set and finished. Never the child's answers, the source or who set it. " +
+        "Only the parent's own children (anyone else → 404).",
       params: StudentIdParamsSchema,
       querystring: ListAssignmentsQuerySchema,
       response: { 200: FamilyAssignmentListResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },

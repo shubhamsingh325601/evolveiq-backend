@@ -17,9 +17,23 @@ const completed: AssignmentRecord = {
 };
 
 describe('toFamilyAssignmentDto — parent allow-list', () => {
-  test('title and done / not done only — never the answer, source, assigner or observation', () => {
-    expect(toFamilyAssignmentDto(completed)).toEqual({ id: completed.id, title: 'Journal', isDone: true });
-    expect(toFamilyAssignmentDto({ ...completed, completion: null })).toEqual({ id: completed.id, title: 'Journal', isDone: false });
+  test('title, done / not done and when — never the answer, source, assigner or observation', () => {
+    expect(toFamilyAssignmentDto(completed)).toEqual({
+      id: completed.id,
+      title: 'Journal',
+      isDone: true,
+      assignedAt: '2026-10-01T10:00:00.000Z',
+      completedAt: '2026-10-02T10:00:00.000Z',
+    });
+    expect(toFamilyAssignmentDto({ ...completed, completion: null })).toEqual({
+      id: completed.id,
+      title: 'Journal',
+      isDone: false,
+      assignedAt: '2026-10-01T10:00:00.000Z',
+      completedAt: null,
+    });
+    const raw = JSON.stringify(toFamilyAssignmentDto(completed));
+    for (const secret of ['SECRET-ANSWER', 'PSYCH-NAME', '3333', 'recommended']) expect(raw, secret).not.toContain(secret);
   });
 });
 
