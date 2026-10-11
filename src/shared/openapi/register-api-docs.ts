@@ -31,8 +31,15 @@ export async function registerApiDocs(app: FastifyInstance): Promise<void> {
           '**Errors** always have the shape `{ "error": { "code", "message", "details"? } }`.',
       },
       tags: [
-        { name: 'Auth', description: 'Login, token refresh and admin-created registration.' },
+        { name: 'Auth', description: 'Login, token refresh, logout and admin-created registration.' },
         { name: 'Schools', description: 'School management — Platform Admin only.' },
+        { name: 'Users', description: 'User management — Platform Admin (all users) and School Admin (own school), parent ↔ student links.' },
+        { name: 'Classes', description: 'Classes and their teachers / students — School Admin (own school); Teachers read their own classes.' },
+        { name: 'Observations', description: 'Teacher observations and the psychologist review queue (Observe → Review).' },
+        { name: 'Activities', description: 'The one global activity library — Psychologists write, Teachers browse.' },
+        { name: 'Assignments', description: 'Assigning activities and completing them (Assign → Do).' },
+        { name: 'Progress', description: 'Growth areas, streaks and monthly summaries — parent-safe for every audience.' },
+        { name: 'Family', description: 'Parent-facing endpoints. Responses contain only what parents may see.' },
       ],
       components: {
         securitySchemes: {

@@ -74,7 +74,24 @@ export function createRefreshTokenService(deps: { repository: RefreshTokenReposi
     };
   }
 
-  return { issue, refresh };
+  // POST /logout: revoke the caller's own session. The refresh token must be validly signed
+  // and belong to the authenticated caller; otherwise nothing is revoked. Logging out a
+  // session that has already ended (repeat logout) succeeds and changes nothing.
+  async function logout(actorUserId: string, token: string): Promise<void> {
+    let claims: JWTPayload;
+    try {
+      claims = await verifyRefreshToken(jwt, token);
+    } catch {
+      throw Errors.invalidRefreshToken();
+    }
+    const { sub, jti } = claims;
+    if (sub !== actorUserId || typeof jti !== 'string' || !UUID.test(jti)) {
+      throw Errors.invalidRefreshToken(); // someone else's token, or malformed: same answer
+    }
+    await repo.revokeFamily({ jti, userId: actorUserId });
+  }
+
+  return { issue, refresh, logout };
 }
 
 export type RefreshTokenService = ReturnType<typeof createRefreshTokenService>;

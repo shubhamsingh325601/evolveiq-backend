@@ -1,7 +1,8 @@
 // Business rules for school management. No HTTP, no SQL.
 import { Errors } from '../../shared/errors/index.js';
+import { buildPagination, type Pagination } from '../../shared/pagination/index.js';
 import type { SchoolRecord, SchoolsRepository } from './schools.repository.js';
-import type { ListSchoolsQuery, Pagination, SchoolDto } from './schools.schemas.js';
+import type { ListSchoolsQuery, SchoolDto } from './schools.schemas.js';
 
 function toDto(s: SchoolRecord): SchoolDto {
   return {
@@ -17,17 +18,8 @@ function normaliseName(name: string): string {
   return name.trim();
 }
 
-export function buildPagination(page: number, limit: number, total: number): Pagination {
-  const totalPages = Math.ceil(total / limit);
-  return {
-    page,
-    limit,
-    total,
-    totalPages,
-    hasNextPage: page < totalPages,
-    hasPreviousPage: page > 1,
-  };
-}
+// Shared with every list endpoint; re-exported for existing importers of this module.
+export { buildPagination };
 
 export function createSchoolsService(deps: { repository: SchoolsRepository }) {
   const { repository } = deps;

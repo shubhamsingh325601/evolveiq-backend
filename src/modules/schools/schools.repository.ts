@@ -2,7 +2,8 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import type { Db } from '../../shared/db/prisma.js';
 import { isPrismaKnownError } from '../../shared/errors/index.js';
-import type { SchoolSortField, SortOrder } from './schools.schemas.js';
+import { escapeLike, type SortOrder } from '../../shared/pagination/index.js';
+import type { SchoolSortField } from './schools.schemas.js';
 
 export interface SchoolRecord {
   id: string;
@@ -28,11 +29,6 @@ const ORDER_BY: Readonly<Record<SchoolSortField, (o: SortOrder) => Prisma.School
   createdAt: (o) => [{ createdAt: o }, { id: 'asc' }],
   updatedAt: (o) => [{ updatedAt: o }, { id: 'asc' }],
 };
-
-/** Prisma's `contains` does not escape LIKE wildcards; make % and _ match literally. */
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
 
 export function createSchoolsRepository(db: Db) {
   return {

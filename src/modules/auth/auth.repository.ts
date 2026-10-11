@@ -56,7 +56,8 @@ export function createAuthRepository(db: Db) {
     // ---------- Register: ONE round trip ----------
     // In a single statement this: (1) re-checks the caller is still an active user with the
     // role/school in their token (a deactivated admin's unexpired JWT stops working),
-    // (2) checks a supplied parent is an active parent in the same school, (3) inserts.
+    // (2) checks a supplied parent is an active parent in the same school, (3) inserts the
+    // user and, for a student with a parent, the parent_students link.
     // Duplicates are caught by the unique indexes, never by a SELECT-then-INSERT, so two
     // concurrent requests for the same email cannot both succeed.
     async insertUser(a: InsertUserInput): Promise<InsertUserRow> {
@@ -71,16 +72,21 @@ export function createAuthRepository(db: Db) {
           WHERE id = ${a.parentId}::uuid AND role = 'parent' AND is_active AND school_id = ${a.schoolId}::uuid
         ),
         ins AS (
-          INSERT INTO users (role, school_id, parent_id, full_name, email, student_login_id, secret_hash)
-          SELECT ${a.role}::user_role, ${a.schoolId}::uuid, ${a.parentId}::uuid,
+          INSERT INTO users (role, school_id, full_name, email, student_login_id, secret_hash)
+          SELECT ${a.role}::user_role, ${a.schoolId}::uuid,
                  ${a.fullName}, ${a.email}, ${a.studentLoginId}, ${a.secretHash}
           WHERE EXISTS (SELECT 1 FROM actor)
             AND (${a.parentId}::uuid IS NULL OR EXISTS (SELECT 1 FROM parent))
-          RETURNING id, role, school_id, parent_id, full_name, created_at
+          RETURNING id, role, school_id, full_name, created_at
+        ),
+        link AS (
+          INSERT INTO parent_students (student_id, parent_id)
+          SELECT ins.id, ${a.parentId}::uuid FROM ins WHERE ${a.parentId}::uuid IS NOT NULL
+          RETURNING parent_id
         )
         SELECT EXISTS (SELECT 1 FROM actor)                                    AS is_actor_valid,
                (${a.parentId}::uuid IS NULL OR EXISTS (SELECT 1 FROM parent)) AS is_parent_valid,
-               ins.*
+               ins.*, (SELECT parent_id FROM link) AS parent_id
         FROM (SELECT 1) AS one LEFT JOIN ins ON true`;
       const row = rows[0];
       if (!row) throw new Error('insertUser returned no row');

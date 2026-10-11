@@ -15,9 +15,9 @@ const UNIQUE_FIELD: Readonly<Record<string, string>> = {
 };
 const FK_FIELD: Readonly<Record<string, readonly [field: string, message: string]>> = {
   users_school_id_fkey: ['schoolId', 'School not found.'],
-  users_parent_id_fkey: ['parentId', 'Parent not found in this school.'],
+  parent_students_parent_id_fkey: ['parentId', 'Parent not found in this school.'],
 };
-const PARENT_NOT_FOUND = FK_FIELD.users_parent_id_fkey!;
+const PARENT_NOT_FOUND = FK_FIELD.parent_students_parent_id_fkey!;
 
 export interface RegisteredUser {
   id: string;
@@ -48,6 +48,7 @@ export function createAuthService(deps: {
 
     let row;
     try {
+      // A student's parent link is written to parent_students in the same statement.
       row = await repo.insertUser({
         actorId: actor.userId,
         actorRole: actor.role,

@@ -5,12 +5,13 @@ import { z } from 'zod';
 import type { AppConfig } from '../../config.js';
 import type { Db } from '../../shared/db/prisma.js';
 import { Errors, errorResponses } from '../../shared/errors/index.js';
-import { actorOf, describeRoles, publicAccess, requireRole } from '../../shared/rbac/index.js';
+import { actorOf, describeRoles, publicAccess, requireRole, Role } from '../../shared/rbac/index.js';
 import { REGISTRAR_ROLES } from './auth.policy.js';
 import { createAuthRepository } from './auth.repository.js';
 import {
   LoginBodySchema,
   LoginResponseSchema,
+  LogoutBodySchema,
   RefreshBodySchema,
   RefreshResponseSchema,
   RegisterBodySchema,
@@ -107,6 +108,37 @@ const authRoutes: FastifyPluginAsyncZod<AuthRoutesOptions> = async (app, { db, c
       const result = await refreshTokens.refresh(request.body.refreshToken);
       reply.header('cache-control', 'no-store');
       return result;
+    },
+  });
+
+  // Every signed-in user may end their own session.
+  const anyRole = requireRole(
+    Role.Student, Role.Parent, Role.Teacher, Role.Psychologist, Role.SchoolAdmin, Role.PlatformAdmin,
+  );
+
+  // POST /api/v1/auth/logout — end the caller's session (revoke its refresh tokens)
+  app.post('/logout', {
+    onRequest: [app.authenticate, anyRole],
+    schema: {
+      tags: ['Auth'],
+      summary: 'Log out (end this session)',
+      description:
+        `${describeRoles(anyRole.allowedRoles)} Revokes the given refresh token and every token ` +
+        'rotated from it, so this session can no longer be refreshed. Other sessions of the same ' +
+        'user stay signed in. The refresh token must belong to the caller. The access token ' +
+        'itself is not revoked: it stops working when it expires (`expiresIn` from login). ' +
+        'Logging out an already-ended session also returns 204.',
+      security: [{ bearerAuth: [] }],
+      body: LogoutBodySchema,
+      response: {
+        204: z.null().meta({ description: 'Session ended. No body.' }),
+        // 401: UNAUTHENTICATED (access token) or INVALID_REFRESH_TOKEN (body token).
+        ...errorResponses(400, 401, 500),
+      },
+    },
+    handler: async (request, reply) => {
+      await refreshTokens.logout(actorOf(request).userId, request.body.refreshToken);
+      return reply.code(204).send(null);
     },
   });
 };
