@@ -29,6 +29,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 docker compose up -d          # PostgreSQL 16 on :5432 with databases "evolviq" and "evolviq_test"
 npm run db:migrate            # prisma migrate deploy — creates the schema
 npm run db:seed-dev           # two demo schools (development only)
+npm run db:seed-demo          # optional: a full demo with every role, for the frontend (development only)
 npm run bootstrap:admin       # first Platform Admin, from BOOTSTRAP_ADMIN_* in .env (idempotent)
 
 npm run dev                   # http://localhost:3000   (or: npm run build && npm start)
@@ -497,6 +498,7 @@ Students (themselves), Parents (own children), Teachers (their classes' students
 | `npm run db:migrate:dev` | `prisma migrate dev` — create a new migration after editing `schema.prisma` (development) |
 | `npm run db:migrate:status` | Show applied / pending migrations |
 | `npm run db:seed-dev` | Insert the two demo schools |
+| `npm run db:seed-demo` | Development only: a full demo (two schools, every role, classes, activities, observations, reviews, completions) through the real API. The same people as the frontend's offline mock; adults sign in with `EvolvIQ-Demo-2026`, students (`RV-1001`…) with PIN `246810`. Does nothing if it has already run. |
 | `npm run bootstrap:admin` | Create the first Platform Admin from `BOOTSTRAP_ADMIN_*` (idempotent) |
 | `npm test` / `test:unit` / `test:integration` | Vitest (integration needs `TEST_DATABASE_URL`) |
 | `npm run test:postman` | Run the Postman collection with Newman against `{{baseUrl}}` (Newman is fetched on demand with `npx`, not installed with the project) |

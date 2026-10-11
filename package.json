@@ -19,6 +19,7 @@
     "db:migrate:status": "prisma migrate status",
     "db:seed-dev": "prisma db execute --file prisma/seed.dev.sql",
     "bootstrap:admin": "npm run prisma:generate && tsx --env-file-if-exists=.env scripts/bootstrap-admin.ts",
+    "db:seed-demo": "npm run prisma:generate && tsx --env-file-if-exists=.env scripts/seed-demo.ts",
     "test": "prisma generate && vitest run",
     "test:unit": "prisma generate && vitest run --project unit",
     "test:integration": "prisma generate && vitest run --project integration",
