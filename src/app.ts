@@ -1,3 +1,4 @@
+import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   serializerCompiler,
@@ -45,6 +46,12 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     },
     bodyLimit: 16 * 1024, // payloads are tiny; reject anything larger early
   }).withTypeProvider<ZodTypeProvider>();
+
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
 
   // Zod at the route boundary: request validation + response serialisation.
   app.setValidatorCompiler(validatorCompiler);

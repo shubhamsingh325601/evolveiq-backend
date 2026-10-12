@@ -22,6 +22,7 @@ function isRoleGuard(hook: unknown): hook is RoleGuard {
 /** onRoute hook: throws (aborting startup) when an /api route doesn't declare its access. */
 export function assertRouteDeclaresAccess(route: RouteOptions): void {
   if (!route.url.startsWith(API_PREFIX)) return; // /docs etc. are not API routes
+  if (route.method === 'OPTIONS') return; // CORS preflight handlers
 
   const hooks: unknown[] = route.onRequest === undefined ? [] : [route.onRequest].flat();
   const hasRoleGuard = hooks.some(isRoleGuard);
