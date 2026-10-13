@@ -25,7 +25,7 @@ import parentStudentsRoutes from './modules/users/parent-students.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
 import type { Db } from './shared/db/prisma.js';
 import { errorHandler } from './shared/errors/index.js';
-import { assertRouteDeclaresAccess } from './shared/rbac/index.js';
+import { assertRouteDeclaresAccess, publicAccess } from './shared/rbac/index.js';
 import { registerApiDocs } from './shared/openapi/register-api-docs.js';
 
 export interface BuildAppOptions {
@@ -66,6 +66,23 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
   // Every /api route must declare its allowed roles (or be explicitly public) — checked at
   // startup for each route registered below.
   app.addHook('onRoute', assertRouteDeclaresAccess);
+
+  app.addHook('onRequest', (req, _reply, done) => {
+    const url = req.raw.url ?? '';
+    if (
+      url &&
+      !url.startsWith('/api/v1') &&
+      !url.startsWith('/docs') &&
+      url !== '/' &&
+      url !== '/health'
+    ) {
+      req.raw.url = `/api/v1${url}`;
+    }
+    done();
+  });
+
+  app.get('/', { config: publicAccess() }, async () => ({ status: 'ok', service: 'evolviq-backend' }));
+  app.get('/health', { config: publicAccess() }, async () => ({ status: 'ok', service: 'evolviq-backend' }));
 
   if (config.docs.isEnabled) await registerApiDocs(app);
 
