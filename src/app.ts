@@ -67,39 +67,30 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
   // startup for each route registered below.
   app.addHook('onRoute', assertRouteDeclaresAccess);
 
-  app.addHook('onRequest', (req, _reply, done) => {
-    const url = req.raw.url ?? '';
-    if (
-      url &&
-      !url.startsWith('/api/v1') &&
-      !url.startsWith('/docs') &&
-      url !== '/' &&
-      url !== '/health'
-    ) {
-      req.raw.url = `/api/v1${url}`;
-    }
-    done();
-  });
-
   app.get('/', { config: publicAccess() }, async () => ({ status: 'ok', service: 'evolviq-backend' }));
   app.get('/health', { config: publicAccess() }, async () => ({ status: 'ok', service: 'evolviq-backend' }));
 
   if (config.docs.isEnabled) await registerApiDocs(app);
 
-  await app.register(authRoutes, { prefix: '/api/v1/auth', db, config });
-  await app.register(schoolsRoutes, { prefix: '/api/v1/schools', db });
-  await app.register(usersRoutes, { prefix: '/api/v1/users', db });
-  await app.register(parentStudentsRoutes, { prefix: '/api/v1/parent-students', db });
-  await app.register(classesRoutes, { prefix: '/api/v1/classes', db });
-  await app.register(observationsRoutes, { prefix: '/api/v1/observations', db });
-  await app.register(activitiesRoutes, { prefix: '/api/v1/activities', db });
-  await app.register(assignmentsRoutes, { prefix: '/api/v1/assignments', db });
-  await app.register(activityCompletionsRoutes, { prefix: '/api/v1/activity-completions', db });
-  await app.register(studentAssignmentsRoutes, { prefix: '/api/v1/students', db });
-  await app.register(progressRoutes, { prefix: '/api/v1/students', db, now });
-  // Family app (parents): parent-safe responses only.
-  await app.register(familyObservationsRoutes, { prefix: '/api/v1/family/observations', db });
-  await app.register(familyAssignmentsRoutes, { prefix: '/api/v1/family/children', db });
+  const registerModules = async (prefix: string) => {
+    await app.register(authRoutes, { prefix: `${prefix}/auth`, db, config });
+    await app.register(schoolsRoutes, { prefix: `${prefix}/schools`, db });
+    await app.register(usersRoutes, { prefix: `${prefix}/users`, db });
+    await app.register(parentStudentsRoutes, { prefix: `${prefix}/parent-students`, db });
+    await app.register(classesRoutes, { prefix: `${prefix}/classes`, db });
+    await app.register(observationsRoutes, { prefix: `${prefix}/observations`, db });
+    await app.register(activitiesRoutes, { prefix: `${prefix}/activities`, db });
+    await app.register(assignmentsRoutes, { prefix: `${prefix}/assignments`, db });
+    await app.register(activityCompletionsRoutes, { prefix: `${prefix}/activity-completions`, db });
+    await app.register(studentAssignmentsRoutes, { prefix: `${prefix}/students`, db });
+    await app.register(progressRoutes, { prefix: `${prefix}/students`, db, now });
+    // Family app (parents): parent-safe responses only.
+    await app.register(familyObservationsRoutes, { prefix: `${prefix}/family/observations`, db });
+    await app.register(familyAssignmentsRoutes, { prefix: `${prefix}/family/children`, db });
+  };
+
+  await registerModules('/api/v1');
+  await registerModules('');
 
   return app;
 }
