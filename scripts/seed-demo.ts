@@ -152,7 +152,7 @@ async function seed(): Promise<void> {
     mediaUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
   });
 
-  // ---------- Observations ----------
+  // ---------- Observations: concerns for review, and positive ones that are stars ----------
   const raoToken = await login({ email: 'rao@school.test' });
   const kapoorToken = await login({ email: 'ritu@school.test' });
   const priyaToken = await login({ email: 'priya@family.test' });
@@ -163,9 +163,10 @@ async function seed(): Promise<void> {
   const byTeacher = (token: string, body: Record<string, unknown>) => observe(token, '/observations', body);
   const byParent = (token: string, body: Record<string, unknown>) => observe(token, '/family/observations', body);
 
-  const tangram = await byTeacher(raoToken, {
-    studentId: maya, area: 'learning', when: 'this_week', howOften: 'sometimes', level: 'minor', learningBehaviourArea: 'attention',
-    description: 'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
+  // Concerns: what goes to the psychologist's queue.
+  const readingBlock = await byTeacher(raoToken, {
+    studentId: maya, area: 'learning', when: 'this_week', howOften: 'often', level: 'minor', learningBehaviourArea: 'attention',
+    description: 'Maya drifts off during the afternoon reading block and needs two or three reminders to get back to her page.',
   });
   await byTeacher(raoToken, {
     studentId: devan, area: 'emotions', when: 'today', howOften: 'sometimes', level: 'significant', learningBehaviourArea: 'self_control',
@@ -175,13 +176,13 @@ async function seed(): Promise<void> {
     studentId: noor, area: 'physical', when: 'this_week', howOften: 'daily', level: 'significant', learningBehaviourArea: 'task_completion',
     description: 'Noor is still holding the pencil in a full fist grip. She tires after roughly five minutes of writing and asks to stop.',
   });
-  const blocks = await byTeacher(raoToken, {
-    studentId: lila, area: 'learning', when: 'this_month', howOften: 'once', level: 'minor', learningBehaviourArea: 'attention',
-    description: 'When the block tower fell, Lila rebuilt it with a wider base without anyone suggesting it.',
+  const worksheet = await byTeacher(raoToken, {
+    studentId: lila, area: 'learning', when: 'this_month', howOften: 'often', level: 'moderate', learningBehaviourArea: 'task_completion',
+    description: 'Lila stops at the first tricky question on a maths worksheet and waits for help instead of trying the next one.',
   });
-  const timetable = await byTeacher(kapoorToken, {
-    studentId: tara, area: 'routines', when: 'this_week', howOften: 'daily', level: 'minor', learningBehaviourArea: 'organisation',
-    description: 'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
+  const lunchQueue = await byTeacher(kapoorToken, {
+    studentId: tara, area: 'behaviour', when: 'this_week', howOften: 'sometimes', level: 'minor', learningBehaviourArea: 'self_control',
+    description: 'Tara pushed ahead in the lunch queue twice this week and was upset when she was asked to go back.',
   });
   await byTeacher(kapoorToken, {
     studentId: ibrahim, area: 'learning', when: 'today', howOften: 'often', level: 'significant', learningBehaviourArea: 'following_instructions',
@@ -196,27 +197,57 @@ async function seed(): Promise<void> {
     studentId: maya, area: 'social', when: 'this_week', howOften: 'often',
     description: 'At her cousin’s birthday she waited for her turn at the game twice, then got upset the third time and walked away.',
   });
-  const dinner = await byParent(priyaToken, {
-    studentId: arjun, area: 'communication', when: 'today', howOften: 'once',
+
+  // Positive: each one is a star on the student's profile straight away, and is never reviewed.
+  const star = { tone: 'positive' } as const;
+  await byTeacher(raoToken, {
+    ...star, studentId: maya, area: 'learning', when: 'this_week', howOften: 'once', learningBehaviourArea: 'attention',
+    description: 'Maya stayed with the tangram puzzle for almost ten minutes without being prompted, which is the longest she has worked on one thing this term.',
+  });
+  await byTeacher(raoToken, {
+    ...star, studentId: arjun, area: 'communication', when: 'today', howOften: 'once', learningBehaviourArea: 'participation',
+    description: 'Arjun told the class about the museum trip with a clear beginning, middle and end, and answered three questions without his notes.',
+  });
+  await byTeacher(raoToken, {
+    ...star, studentId: lila, area: 'learning', when: 'this_month', howOften: 'once',
+    description: 'When the block tower fell, Lila rebuilt it with a wider base without anyone suggesting it.',
+  });
+  await byTeacher(raoToken, {
+    ...star, studentId: noor, area: 'social', when: 'today', howOften: 'once', learningBehaviourArea: 'working_with_others',
+    description: 'Noor noticed a classmate sitting alone at lunch, invited her to join the table and introduced her to everyone.',
+  });
+  await byTeacher(kapoorToken, {
+    ...star, studentId: tara, area: 'routines', when: 'this_week', howOften: 'daily', learningBehaviourArea: 'organisation',
+    description: 'Tara packed her own bag and checked the timetable herself for three days running, with no reminder from me.',
+  });
+  await byTeacher(kapoorToken, {
+    ...star, studentId: ibrahim, area: 'behaviour', when: 'this_week', howOften: 'once', learningBehaviourArea: 'working_with_others',
+    description: 'Ibrahim tidied the art corner without being asked and showed a younger pupil where the brushes go.',
+  });
+  await byParent(priyaToken, {
+    ...star, studentId: arjun, area: 'communication', when: 'today', howOften: 'once',
     description: 'Arjun told the whole story of his school trip at dinner without losing track, and used words I have not heard him use before.',
   });
+  await byParent(priyaToken, {
+    ...star, studentId: maya, area: 'routines', when: 'this_week', howOften: 'sometimes',
+    description: 'Maya laid out her uniform and packed her school bag the night before, all on her own.',
+  });
   await byParent(neilToken, {
-    studentId: devan, area: 'emotions', when: 'this_week', howOften: 'sometimes',
+    ...star, studentId: devan, area: 'emotions', when: 'this_week', howOften: 'sometimes',
     description: 'He managed the change of plan on Saturday much better than he would have a month ago. He asked what was happening instead of shutting down.',
   });
 
   // ---------- Reviews: "Assign & mark reviewed" creates the recommended assignments ----------
   const review = (observationId: string, body: Record<string, unknown>) =>
     call('POST', `/observations/${observationId}/review`, mehta, body);
-  await review(tangram, {
+  await review(readingBlock, {
     outcome: 'assigned', developmentArea: 'focus_attention', activityIds: [sorting],
-    teacherOnlyNote: 'Worth repeating the same task next week to see whether the duration holds.',
+    teacherOnlyNote: 'Try the same short task at the same time each day, and see whether the reminders drop.',
   });
   await review(assembly, { outcome: 'assigned', developmentArea: 'confidence', activityIds: [feelings] });
-  await review(dinner, { outcome: 'assigned', developmentArea: 'communication', activityIds: [story] });
-  await review(blocks, { outcome: 'assigned', developmentArea: 'learning_skills', activityIds: [homework] });
-  await review(timetable, {
-    outcome: 'no_action', teacherOnlyNote: 'Lovely to see. Nothing to change; keep noticing it.',
+  await review(worksheet, { outcome: 'assigned', developmentArea: 'learning_skills', activityIds: [homework] });
+  await review(lunchQueue, {
+    outcome: 'no_action', teacherOnlyNote: 'Worth watching, but nothing to act on yet. Tell me if it happens again.',
   });
 
   // ---------- Direct assignments from teachers ----------
@@ -224,6 +255,7 @@ async function seed(): Promise<void> {
     (await call<{ assignment: { id: string } }>('POST', '/assignments', token, { studentId, activityId })).assignment.id;
   const mayaStory = await assign(raoToken, maya, story);
   await assign(raoToken, maya, homework);
+  const arjunStory = await assign(raoToken, arjun, story);
   await assign(raoToken, devan, video);
   await assign(raoToken, noor, feelings);
   const taraStory = await assign(kapoorToken, tara, story);
@@ -241,14 +273,14 @@ async function seed(): Promise<void> {
 
   await complete('RV-1001', await assignmentFor(maya, feelings), { type: 'image_pick', optionId: 'happy' }, 2);
   await complete('RV-1001', mayaStory, { type: 'text', text: 'We built a volcano in science and it really fizzed!' }, 1);
-  await complete('RV-1002', await assignmentFor(arjun, story), { type: 'text', text: 'Telling everyone about the museum trip.' }, 0);
+  await complete('RV-1002', arjunStory, { type: 'text', text: 'Telling everyone about the museum trip.' }, 0);
   await complete('RV-1007', taraStory, { type: 'text', text: 'Art, because I finished my painting.' }, 3);
 
   console.log('Demo data is in. Sign in with any of these:');
   console.table([
     { role: 'Platform Admin', signIn: PLATFORM_ADMIN.email },
     { role: 'School Admin', signIn: 'clara@school.test' },
-    { role: 'Psychologist', signIn: 'mehta@school.test' },
+    { role: 'Counsellor (psychologist)', signIn: 'mehta@school.test' },
     { role: 'Teacher', signIn: 'rao@school.test' },
     { role: 'Teacher', signIn: 'ritu@school.test' },
     { role: 'Parent', signIn: 'priya@family.test' },

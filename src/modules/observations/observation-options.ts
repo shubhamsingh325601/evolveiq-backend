@@ -9,10 +9,26 @@ import {
   ObservationFrequency,
   ObservationLevel,
   ObservationStatus,
+  ObservationTone,
   ObservationWhen,
 } from '../../generated/prisma/enums.js';
 
-export { DevelopmentArea, LearningBehaviourArea, ObservationArea, ObservationFrequency, ObservationLevel, ObservationStatus, ObservationWhen };
+export {
+  DevelopmentArea,
+  LearningBehaviourArea,
+  ObservationArea,
+  ObservationFrequency,
+  ObservationLevel,
+  ObservationStatus,
+  ObservationTone,
+  ObservationWhen,
+};
+
+/** What kind of observation it is. A positive one is a star for the student and is never reviewed. */
+export const OBSERVATION_TONE_LABELS: Readonly<Record<ObservationTone, string>> = Object.freeze({
+  positive: 'Something to celebrate',
+  concern: 'Something to look into',
+});
 
 export const OBSERVATION_AREA_LABELS: Readonly<Record<ObservationArea, string>> = Object.freeze({
   emotions: 'Emotions & feelings',
@@ -39,7 +55,7 @@ export const OBSERVATION_FREQUENCY_LABELS: Readonly<Record<ObservationFrequency,
   daily: 'Every day',
 });
 
-/** Teachers only. */
+/** Teachers only, and concerns only: how much it worries the teacher. */
 export const OBSERVATION_LEVEL_LABELS: Readonly<Record<ObservationLevel, string>> = Object.freeze({
   minor: 'Minor',
   moderate: 'Moderate',
@@ -75,6 +91,7 @@ export const DEVELOPMENT_AREA_LABELS: Readonly<Record<DevelopmentArea, string>> 
 export const OBSERVATION_STATUS_LABELS: Readonly<Record<ObservationStatus, string>> = Object.freeze({
   pending: 'Pending',
   reviewed: 'Reviewed',
+  celebrated: 'Celebrated',
 });
 
 /** "value → label" lines for API documentation. */

@@ -7,6 +7,7 @@ import type {
   ObservationFrequency,
   ObservationLevel,
   ObservationStatus,
+  ObservationTone,
   ObservationWhen,
 } from '../../generated/prisma/enums.js';
 import type { Db } from '../../shared/db/prisma.js';
@@ -21,6 +22,7 @@ const SELECT = {
   studentId: true,
   authorId: true,
   authorRole: true,
+  tone: true,
   area: true,
   description: true,
   observedWhen: true,
@@ -46,6 +48,9 @@ export interface NewObservation {
   readonly studentId: string;
   readonly authorId: string;
   readonly authorRole: 'parent' | 'teacher';
+  readonly tone: ObservationTone;
+  /** 'celebrated' for a positive observation, 'pending' for a concern. */
+  readonly status: Extract<ObservationStatus, 'pending' | 'celebrated'>;
   readonly area: ObservationArea;
   readonly description: string;
   readonly observedWhen: ObservationWhen;
@@ -57,6 +62,7 @@ export interface NewObservation {
 export interface ObservationFilters {
   readonly authorId?: string | undefined;
   readonly status?: ObservationStatus | undefined;
+  readonly tone?: ObservationTone | undefined;
   readonly level?: ObservationLevel | undefined;
   readonly authorRole?: 'parent' | 'teacher' | undefined;
   readonly schoolId?: string | undefined;

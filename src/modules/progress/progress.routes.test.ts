@@ -74,7 +74,7 @@ async function reviewed(studentId: string, outcome: 'assigned' | 'no_action', de
 
 // ─────────────────────────────── Access ───────────────────────────────
 describe('who can see a student\'s progress', () => {
-  const paths = ['growth-areas', 'streak', 'monthly-summaries/2026-11'];
+  const paths = ['growth-areas', 'streak', 'stars', 'monthly-summaries/2026-11'];
 
   test('the student, their parent, their teacher and psychologists → 200', async () => {
     for (const who of [a.student, a.parent, a.teacher, psych]) {
@@ -139,6 +139,86 @@ describe('growth areas — derived from "Assign & mark reviewed" development are
 
   test('there is no endpoint to add a growth area manually', async () => {
     expect((await ctx.post(url(a.student.id, 'growth-areas'), { name: 'X' }, psych.token)).status).toBe(404);
+  });
+});
+
+// ─────────────────────────────── Stars ───────────────────────────────
+describe('stars — one for every positive observation', () => {
+  const STAR_KEYS = ['area', 'createdAt', 'description', 'givenBy', 'id', 'studentId'];
+  const starsOf = (s: Account, token = s.token, qs = '') => ctx.get(`${url(s.id, 'stars')}${qs}`, token);
+
+  /** Writes an observation about `studentId`; `createdAt` moves it in time. */
+  async function observe(token: string, path: string, studentId: string, extra: Record<string, unknown>, createdAt?: string): Promise<string> {
+    const r = await ctx.post(path, { studentId, area: 'communication', description: 'Noticed.', when: 'today', howOften: 'once', ...extra }, token);
+    if (r.status !== 201) throw new Error(`observation failed: ${r.status} ${JSON.stringify(r.body)}`);
+    if (createdAt) await ctx.pg.query('UPDATE observations SET created_at = $1 WHERE id = $2', [createdAt, r.body.observation.id]);
+    return r.body.observation.id as string;
+  }
+
+  test('nothing positive yet → no stars', async () => {
+    const s = await studentWithCompletions([]);
+    const r = await starsOf(s);
+    expect(r.status).toBe(200);
+    expect(r.body.stars).toEqual([]);
+    expect(r.body.pagination.total).toBe(0);
+  });
+
+  test("a teacher's and a parent's positive observations are stars, newest first; concerns are not", async () => {
+    const s = await studentWithCompletions([]);
+    const parent = await newAccount(ctx, rootToken, 'parent', SCHOOL_A);
+    await ctx.post('/api/v1/parent-students', { parentId: parent.id, studentId: s.id }, a.schoolAdmin.token);
+    const fromTeacher = await observe(
+      a.teacher.token,
+      '/api/v1/observations',
+      s.id,
+      { tone: 'positive', description: 'Explained the museum trip to the whole class.', learningBehaviourArea: 'participation' },
+      '2026-11-01T05:00:00Z',
+    );
+    const fromParent = await observe(parent.token, '/api/v1/family/observations', s.id, { tone: 'positive', area: 'routines' }, '2026-11-02T05:00:00Z');
+    await observe(a.teacher.token, '/api/v1/observations', s.id, { description: 'Found the fire drill very hard.' }); // a concern
+
+    for (const who of [s, parent, a.teacher, psych]) {
+      const r = await starsOf(s, who.token);
+      expect(r.status).toBe(200);
+      expect(r.body.stars.map((star: { id: string }) => star.id)).toEqual([fromParent, fromTeacher]);
+      expect(r.body.pagination.total).toBe(2);
+    }
+    const r = await starsOf(s);
+    expect(r.body.stars[1]).toEqual({
+      id: fromTeacher,
+      studentId: s.id,
+      area: 'communication',
+      description: 'Explained the museum trip to the whole class.',
+      givenBy: { fullName: expect.any(String), role: 'teacher' },
+      createdAt: '2026-11-01T05:00:00.000Z',
+    });
+    expect(r.body.stars[0].givenBy).toEqual({ fullName: expect.any(String), role: 'parent' });
+    for (const star of r.body.stars) expect(Object.keys(star).sort()).toEqual(STAR_KEYS);
+    // The learning-behaviour area is a teacher-only field: never part of a star.
+    expect(JSON.stringify(r.body)).not.toContain('participation');
+  });
+
+  test('paged like every list; `limit=1` still gives the count', async () => {
+    const s = await studentWithCompletions([]);
+    for (const day of ['01', '02', '03']) {
+      await observe(a.teacher.token, '/api/v1/observations', s.id, { tone: 'positive' }, `2026-11-${day}T05:00:00Z`);
+    }
+    const r = await starsOf(s, s.token, '?limit=1&page=2');
+    expect(r.body.stars).toHaveLength(1);
+    expect(r.body.stars[0].createdAt).toBe('2026-11-02T05:00:00.000Z');
+    expect(r.body.pagination).toMatchObject({ page: 2, limit: 1, total: 3, totalPages: 3 });
+    expect((await starsOf(s, s.token, '?limit=0')).status).toBe(400);
+  });
+
+  test("a month's stars are counted in its summary", async () => {
+    const s = await studentWithCompletions([]);
+    await observe(a.teacher.token, '/api/v1/observations', s.id, { tone: 'positive' }, '2026-11-02T05:00:00Z');
+    await observe(a.teacher.token, '/api/v1/observations', s.id, { tone: 'positive' }, '2026-10-20T05:00:00Z');
+    await observe(a.teacher.token, '/api/v1/observations', s.id, {}, '2026-11-02T06:00:00Z'); // a concern: no star
+    const november = await ctx.get(url(s.id, 'monthly-summaries/2026-11'), s.token);
+    expect(november.body.summary.text).toMatch(/ has earned 1 star this month\.$/);
+    const october = await ctx.get(url(s.id, 'monthly-summaries/2026-10'), s.token);
+    expect(october.body.summary.text).toMatch(/ earned 1 star that month\.$/);
   });
 });
 

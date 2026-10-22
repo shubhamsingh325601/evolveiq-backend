@@ -6,15 +6,19 @@
 //   reviewed" reviews, the 5 most recent (distinct) ones; older ones drop off.
 // Streak: consecutive Asia/Kolkata days with ≥ 1 completion, counting from yesterday when
 //   today has none yet.
+// Stars: the student's positive observations — something good a teacher or their parent
+//   noticed — newest first, with the giver's own words.
 // Monthly summary: plain template sentences (no AI). The current month is built live on each
 //   request; a finished month is stored the first time it is requested and never changes.
 import type { DevelopmentArea } from '../../generated/prisma/enums.js';
 import { Errors } from '../../shared/errors/index.js';
+import { buildPagination, type Pagination } from '../../shared/pagination/index.js';
 import type { Actor } from '../../shared/rbac/index.js';
 import { DEVELOPMENT_AREA_LABELS } from '../observations/observation-options.js';
 import type { StudentScopeRepository } from '../users/student-scope.js';
 import { businessDate, businessMonth, currentStreak, longestRun, monthBounds, monthLabel } from './business-time.js';
-import type { ProgressRepository } from './progress.repository.js';
+import type { ProgressRepository, StarRecord } from './progress.repository.js';
+import type { StarDto, StarsQuery } from './progress.schemas.js';
 
 export interface SummaryFacts {
   readonly name: string;
@@ -23,6 +27,8 @@ export interface SummaryFacts {
   readonly completed: number;
   readonly activeDays: number;
   readonly longestStreak: number;
+  /** Stars given that month. */
+  readonly stars: number;
   readonly growthAreas: readonly string[];
 }
 
@@ -47,11 +53,27 @@ export function buildSummaryText(f: SummaryFacts): string {
     sentences.push(f.isCurrentMonth ? `So far in ${label}, ${f.name} has completed ${done}.` : `In ${label}, ${f.name} completed ${done}.`);
     if (f.longestStreak >= 2) sentences.push(`Their longest streak was ${f.longestStreak} days in a row.`);
   }
+  if (f.stars > 0) {
+    const stars = plural(f.stars, 'star', 'stars');
+    sentences.push(f.isCurrentMonth ? `${f.name} has earned ${stars} this month.` : `${f.name} earned ${stars} that month.`);
+  }
   if (f.growthAreas.length > 0) sentences.push(`Areas ${f.name} is working on: ${list(f.growthAreas)}.`);
   return sentences.join(' ');
 }
 
 const namesOf = (areas: readonly DevelopmentArea[]) => areas.map((area) => DEVELOPMENT_AREA_LABELS[area]);
+
+/** Copies what a star shows, field by field: never a spread record, so nothing else can leak. */
+export function toStarDto(s: StarRecord): StarDto {
+  return {
+    id: s.id,
+    studentId: s.studentId,
+    area: s.area,
+    description: s.description,
+    givenBy: { fullName: s.author.fullName, role: s.authorRole === 'parent' ? 'parent' : 'teacher' },
+    createdAt: s.createdAt.toISOString(),
+  };
+}
 
 export function createProgressService(deps: { repository: ProgressRepository; students: StudentScopeRepository; now: () => Date }) {
   const { repository, students, now } = deps;
@@ -75,6 +97,13 @@ export function createProgressService(deps: { repository: ProgressRepository; st
     return { streak: { days: currentStreak(days, businessDate(at)) } };
   }
 
+  async function stars(actor: Actor, studentId: string, query: StarsQuery): Promise<{ stars: StarDto[]; pagination: Pagination }> {
+    const student = await studentInScope(actor, studentId);
+    const { page, limit } = query;
+    const { items, total } = await repository.stars(student.id, { skip: (page - 1) * limit, take: limit });
+    return { stars: items.map(toStarDto), pagination: buildPagination(page, limit, total) };
+  }
+
   async function monthlySummary(actor: Actor, studentId: string, month: string) {
     const student = await studentInScope(actor, studentId);
     const at = now();
@@ -85,8 +114,9 @@ export function createProgressService(deps: { repository: ProgressRepository; st
     const bounds = monthBounds(month);
     const isCurrentMonth = month === currentMonth;
     const build = async () => {
-      const [activity, areas] = await Promise.all([
+      const [activity, starCount, areas] = await Promise.all([
         repository.monthActivity(student.id, bounds, at),
+        repository.monthStars(student.id, bounds, at),
         repository.growthAreas(student.id, at, isCurrentMonth ? undefined : bounds.nextFirst),
       ]);
       return buildSummaryText({
@@ -96,6 +126,7 @@ export function createProgressService(deps: { repository: ProgressRepository; st
         completed: activity.completed,
         activeDays: activity.days.length,
         longestStreak: longestRun(activity.days),
+        stars: starCount,
         growthAreas: namesOf(areas),
       });
     };
@@ -119,7 +150,7 @@ export function createProgressService(deps: { repository: ProgressRepository; st
     return { summary: { studentId: student.id, month, text, isFinal: !isCurrentMonth } };
   }
 
-  return { growthAreas, streak, monthlySummary };
+  return { growthAreas, streak, stars, monthlySummary };
 }
 
 export type ProgressService = ReturnType<typeof createProgressService>;

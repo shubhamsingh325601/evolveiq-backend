@@ -8,8 +8,9 @@
 //     (a user cannot be their own parent).
 //   - The citext extension used by classes.name (case-insensitive uniqueness per school).
 //   - CHECK constraints on observations (author is a parent or teacher, teacher-only fields,
-//     consistent review state, Significant needs a development area), on assignments
-//     (recommended ⇔ linked to an observation) and on text lengths.
+//     consistent review state, Significant needs a development area, positive ⇔ celebrated,
+//     no Level on a positive one), on assignments (recommended ⇔ linked to an observation)
+//     and on text lengths.
 //   - The trigger that makes monthly_summaries rows immutable.
 
 generator client {
@@ -240,11 +241,21 @@ enum DevelopmentArea {
   @@map("development_area")
 }
 
+/// Concerns go pending → reviewed. A positive observation is celebrated from the start.
 enum ObservationStatus {
   pending
   reviewed
+  celebrated
 
   @@map("observation_status")
+}
+
+/// Something good (a star for the student) or something to look into (the review queue).
+enum ObservationTone {
+  positive
+  concern
+
+  @@map("observation_tone")
 }
 
 /// "Assign & mark reviewed" / "No action needed".
@@ -263,6 +274,8 @@ model Observation {
   authorId              String                 @map("author_id") @db.Uuid
   /// parent | teacher (CHECK in the migration).
   authorRole            UserRole               @map("author_role")
+  /// positive ⇔ status celebrated (CHECK in the migration).
+  tone                  ObservationTone        @default(concern)
   area                  ObservationArea
   description           String
   observedWhen          ObservationWhen        @map("observed_when")
@@ -290,6 +303,7 @@ model Observation {
   @@index([studentId, createdAt], map: "observations_student_id_created_at_idx")
   @@index([authorId, createdAt], map: "observations_author_id_created_at_idx")
   @@index([studentId, reviewedAt], map: "observations_student_id_reviewed_at_idx", where: raw("((review_outcome = 'assigned'::review_outcome) AND (development_area IS NOT NULL))"))
+  @@index([studentId, createdAt], map: "observations_student_id_created_at_positive_idx", where: raw("(tone = 'positive'::observation_tone)"))
   @@map("observations")
 }
 

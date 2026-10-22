@@ -3,8 +3,17 @@
 Source of truth: `EvolvIQ_MVP_Scope_Confirmation.pdf` (Sept 2026). This file
 translates that PRD into backend-specific deliverables.
 
+**Change, 21 Oct 2026 (client feedback):** observations "shouldn't be only
+negative or psychological — they can be good and cheering too", and good
+reviews from teachers should become rewards. Every observation now has a tone:
+a concern follows the workflow below, unchanged; a positive one is a **star**
+on the student's profile at once, never reviewed, never Significant and never a
+growth area. Parents can record positive observations too. The frontend calls
+the psychologist the school **Counsellor**.
+
 ## Core workflow to support end-to-end
-Observe → Review → Assign → Do → See
+Observe → Review → Assign → Do → See (concerns); Observe → Celebrate (positive
+observations: a star)
 
 ## In scope by domain
 
@@ -14,10 +23,12 @@ Observe → Review → Assign → Do → See
 - RBAC middleware enforced at the route layer, not just in service logic
 
 ### Observations
-- Create observation (Parent variant: area, free text, when, how often;
-  Teacher variant: adds Level + Learning-behaviour area)
+- Create observation (Parent variant: tone, area, free text, when, how often;
+  Teacher variant: adds Level (concerns only) + Learning-behaviour area)
+- Tone: concern (for review) or positive (a star, celebrated at once, never
+  reviewed)
 - List/filter for Psychologist queue: Pending, Significant, From parents,
-  Reviewed, by school
+  Reviewed, by school, and by tone (the queue asks for concerns)
 - Observation detail + related history lookup
 - Review action: tag development area, optional teacher-only note,
   "Assign & mark reviewed" or "No action needed"
@@ -31,8 +42,10 @@ Observe → Review → Assign → Do → See
 ### Progress
 - Per-student growth areas (hard cap: 5)
 - Monthly summary generation (plain-language, Parent-safe — excludes
-  clinical scores/psychologist notes)
+  clinical scores/psychologist notes; counts the month's stars)
 - Streak calculation from completions
+- Per-student stars: one per positive observation, with the giver's words,
+  name and role (Parent-safe for every audience)
 
 ### School / Platform administration
 - School Admin: manage students, teachers, classes, parents (CRUD)

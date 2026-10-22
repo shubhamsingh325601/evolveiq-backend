@@ -2,7 +2,8 @@
 // Parent / teacher creation (enums, teacher-only fields, scope), who sees what (allow-listed
 // DTOs, nothing clinical for parents), the psychologist's queue / detail / history, and the
 // review: one per observation (409), Significant needs a development area, assignments
-// created atomically with the review (rollback proven with injected failures).
+// created atomically with the review (rollback proven with injected failures). Positive
+// observations: celebrated at once, never reviewed, never given a Level.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { ADMIN, SCHOOL_A, SCHOOL_B, createTestContext, type TestContext } from '../../../test/support/api-harness.js';
 import {
@@ -18,7 +19,7 @@ import {
 
 const OBS = '/api/v1/observations';
 const FAMILY = '/api/v1/family/observations';
-const PARENT_KEYS = ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'when'];
+const PARENT_KEYS = ['area', 'createdAt', 'description', 'howOften', 'id', 'status', 'studentId', 'tone', 'when'];
 const TEACHER_KEYS = [...PARENT_KEYS, 'learningBehaviourArea', 'level', 'reviewedAt', 'teacherOnlyNote'].sort();
 
 let ctx: TestContext;
@@ -99,9 +100,9 @@ describe('teacher creates', () => {
     const r = await asTeacher({ studentId: a.student.id, ...base, level: 'moderate', learningBehaviourArea: 'task_completion' });
     expect(r.status).toBe(201);
     expect(Object.keys(r.body.observation).sort()).toEqual(TEACHER_KEYS);
-    expect(r.body.observation).toMatchObject({ ...base, level: 'moderate', learningBehaviourArea: 'task_completion', status: 'pending', teacherOnlyNote: null });
+    expect(r.body.observation).toMatchObject({ ...base, tone: 'concern', level: 'moderate', learningBehaviourArea: 'task_completion', status: 'pending', teacherOnlyNote: null });
     const row = await dbObservation(r.body.observation.id);
-    expect(row).toMatchObject({ author_role: 'teacher', school_id: SCHOOL_A, student_id: a.student.id, level: 'moderate' });
+    expect(row).toMatchObject({ author_role: 'teacher', school_id: SCHOOL_A, student_id: a.student.id, level: 'moderate', tone: 'concern' });
   });
 
   test('Level and learning-behaviour area are optional', async () => {
@@ -132,6 +133,7 @@ describe('teacher creates', () => {
     ['howOften', { howOften: 'always' }],
     ['level', { level: 'severe' }],
     ['learningBehaviourArea', { learningBehaviourArea: 'reading' }],
+    ['tone', { tone: 'negative' }],
     ['description', { description: '   ' }],
     ['description', { description: 'x'.repeat(2001) }],
   ])('invalid %s → 400', async (field, extra) => {
@@ -142,6 +144,7 @@ describe('teacher creates', () => {
 
   test('every documented value of every list is accepted', async () => {
     const lists = {
+      tone: ['positive', 'concern'],
       area: ['emotions', 'behaviour', 'social', 'learning', 'communication', 'physical', 'routines', 'other'],
       when: ['today', 'this_week', 'this_month', 'over_a_month'],
       howOften: ['once', 'sometimes', 'often', 'daily'],
@@ -161,8 +164,15 @@ describe('parent creates', () => {
     const r = await asParent({ studentId: a.student.id, ...base });
     expect(r.status).toBe(201);
     expect(Object.keys(r.body.observation).sort()).toEqual(PARENT_KEYS);
-    expect(r.body.observation).toMatchObject({ ...base, status: 'pending', studentId: a.student.id });
+    expect(r.body.observation).toMatchObject({ ...base, tone: 'concern', status: 'pending', studentId: a.student.id });
     expect((await dbObservation(r.body.observation.id))).toMatchObject({ author_role: 'parent', level: null, learning_behaviour_area: null });
+  });
+
+  test('a positive one is celebrated straight away', async () => {
+    const r = await asParent({ studentId: a.student.id, ...base, tone: 'positive', description: 'Tied her shoelaces on her own.' });
+    expect(r.status).toBe(201);
+    expect(Object.keys(r.body.observation).sort()).toEqual(PARENT_KEYS);
+    expect(r.body.observation).toMatchObject({ tone: 'positive', status: 'celebrated' });
   });
 
   test.each([
@@ -408,6 +418,71 @@ describe('review', () => {
 
   test('unknown observation → 404', async () => {
     expect((await review('99999999-9999-4999-8999-999999999999', { outcome: 'no_action' })).status).toBe(404);
+  });
+});
+
+// ─────────────────────────────── Positive observations ───────────────────────────────
+describe('positive observations — stars, never reviewed', () => {
+  const praise = { ...base, area: 'communication', description: 'Actively communicating, fluent in language.', tone: 'positive' };
+
+  test('a teacher writes one: celebrated at once, no Level, learning-behaviour area allowed', async () => {
+    const r = await asTeacher({ studentId: a.student.id, ...praise, learningBehaviourArea: 'participation' });
+    expect(r.status).toBe(201);
+    expect(Object.keys(r.body.observation).sort()).toEqual(TEACHER_KEYS);
+    expect(r.body.observation).toMatchObject({ tone: 'positive', status: 'celebrated', level: null, learningBehaviourArea: 'participation', reviewedAt: null });
+    expect(await dbObservation(r.body.observation.id)).toMatchObject({ tone: 'positive', status: 'celebrated', reviewed_by_id: null });
+
+    const mine = await ctx.get(`${OBS}/mine?limit=100`, a.teacher.token);
+    expect(mine.body.observations.find((o: { id: string }) => o.id === r.body.observation.id)).toMatchObject({ status: 'celebrated' });
+  });
+
+  test('a Level on a positive one → 400 (something good is never Significant), nothing written', async () => {
+    const before = (await ctx.pg.query('SELECT count(*)::int AS n FROM observations')).rows[0].n;
+    for (const level of ['minor', 'significant']) {
+      const r = await asTeacher({ studentId: a.student.id, ...praise, level });
+      expect(r.status).toBe(400);
+      expect(r.body.error.details).toEqual([{ field: 'level', message: 'is not allowed on a positive observation' }]);
+    }
+    expect((await ctx.pg.query('SELECT count(*)::int AS n FROM observations')).rows[0].n).toBe(before);
+  });
+
+  test('reviewing one → 409 with either outcome; nothing changes, nothing is assigned', async () => {
+    const id = (await asTeacher({ studentId: a.student.id, ...praise })).body.observation.id;
+    const before = await dbObservation(id);
+    for (const body of [{ outcome: 'no_action' }, { outcome: 'assigned', activityIds: [activityA], developmentArea: 'communication' }]) {
+      const r = await review(id, body);
+      expect(r.status).toBe(409);
+      expect(r.body.error).toEqual({ code: 'CONFLICT', message: 'Positive observations are celebrated, not reviewed.' });
+    }
+    expect(await dbObservation(id)).toEqual(before);
+    expect(await assignmentsFor(id)).toHaveLength(0);
+  });
+
+  test('the queue: Pending and Reviewed never hold one; `tone` filters', async () => {
+    const id = (await asParent({ studentId: a.student.id, ...praise })).body.observation.id;
+    const q = async (qs: string) =>
+      (await ctx.get(`${OBS}?limit=100&${qs}`, psych.token)).body.observations.map((o: { id: string }) => o.id) as string[];
+    expect(await q('status=pending')).not.toContain(id);
+    expect(await q('status=reviewed')).not.toContain(id);
+    expect(await q('tone=concern')).not.toContain(id);
+    expect(await q('tone=positive')).toContain(id);
+    expect(await q('authorRole=parent&tone=positive')).toContain(id);
+    const item = (await ctx.get(`${OBS}?limit=100&tone=positive`, psych.token)).body.observations.find((o: { id: string }) => o.id === id);
+    expect(item).toMatchObject({ tone: 'positive', status: 'celebrated', review: null, author: { role: 'parent' } });
+    expect((await ctx.get(`${OBS}?tone=happy`, psych.token)).status).toBe(400);
+  });
+
+  test('the database refuses a star in the review states, or a Level on one', async () => {
+    const star = (await asTeacher({ studentId: a.student.id, ...praise })).body.observation.id;
+    const concern = await teacherObservation();
+    for (const [sql, id] of [
+      [`UPDATE observations SET status = 'pending' WHERE id = $1`, star],
+      [`UPDATE observations SET level = 'significant' WHERE id = $1`, star],
+      [`UPDATE observations SET status = 'celebrated' WHERE id = $1`, concern],
+      [`UPDATE observations SET tone = 'positive' WHERE id = $1`, concern],
+    ] as const) {
+      await expect(ctx.pg.query(sql, [id]), sql).rejects.toThrow(/check constraint/);
+    }
   });
 });
 

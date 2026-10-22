@@ -10,8 +10,13 @@
 //                 development area; "assigned" creates recommended assignments in the same
 //                 transaction.
 //
+// Tone: an observation is a concern (pending → reviewed, as above) or positive. A positive one
+//   is a star for the student: 'celebrated' from the start, never reviewed (→ 409), never given
+//   a Level (→ 400) and so never Significant or a growth area.
+//
 // Each audience has its own mapper below. They COPY the allowed fields one by one — never
 // spread a record and delete fields — so a new column can't leak by default.
+import type { ObservationTone } from '../../generated/prisma/enums.js';
 import { Errors } from '../../shared/errors/index.js';
 import { buildPagination, type Pagination } from '../../shared/pagination/index.js';
 import { Role, type Actor } from '../../shared/rbac/index.js';
@@ -34,6 +39,7 @@ export function toParentDto(o: ObservationRecord): ParentObservationDto {
   return {
     id: o.id,
     studentId: o.studentId,
+    tone: o.tone,
     area: o.area,
     description: o.description,
     when: o.observedWhen,
@@ -47,6 +53,7 @@ export function toTeacherDto(o: ObservationRecord): TeacherObservationDto {
   return {
     id: o.id,
     studentId: o.studentId,
+    tone: o.tone,
     area: o.area,
     description: o.description,
     when: o.observedWhen,
@@ -67,6 +74,7 @@ export function toReviewDto(o: ObservationRecord): ReviewObservationDto {
     schoolId: o.schoolId,
     student: { id: o.student.id, fullName: o.student.fullName },
     author: { id: o.author.id, fullName: o.author.fullName, role: o.authorRole === 'parent' ? 'parent' : 'teacher' },
+    tone: o.tone,
     area: o.area,
     description: o.description,
     when: o.observedWhen,
@@ -98,6 +106,9 @@ export function createObservationsService(deps: { repository: ObservationsReposi
     return { ...student, schoolId: student.schoolId };
   }
 
+  /** A star is celebrated straight away; a concern waits for review. */
+  const statusFor = (tone: ObservationTone) => (tone === 'positive' ? 'celebrated' : 'pending');
+
   async function createAsParent(actor: Actor, body: ParentObservationBody): Promise<ParentObservationDto> {
     if (actor.role !== Role.Parent) throw Errors.forbidden();
     const student = await studentFor(actor, body.studentId);
@@ -106,6 +117,8 @@ export function createObservationsService(deps: { repository: ObservationsReposi
       studentId: student.id,
       authorId: actor.userId,
       authorRole: 'parent',
+      tone: body.tone,
+      status: statusFor(body.tone),
       area: body.area,
       description: body.description.trim(),
       observedWhen: body.when,
@@ -118,12 +131,18 @@ export function createObservationsService(deps: { repository: ObservationsReposi
 
   async function createAsTeacher(actor: Actor, body: TeacherObservationBody): Promise<TeacherObservationDto> {
     if (actor.role !== Role.Teacher) throw Errors.forbidden();
+    // Level says how worrying a concern is; something good has no Level (and is never Significant).
+    if (body.tone === 'positive' && body.level !== undefined) {
+      throw Errors.validation([{ field: 'level', message: 'is not allowed on a positive observation' }]);
+    }
     const student = await studentFor(actor, body.studentId);
     const created = await repository.create({
       schoolId: student.schoolId,
       studentId: student.id,
       authorId: actor.userId,
       authorRole: 'teacher',
+      tone: body.tone,
+      status: statusFor(body.tone),
       area: body.area,
       description: body.description.trim(),
       observedWhen: body.when,
@@ -180,6 +199,7 @@ export function createObservationsService(deps: { repository: ObservationsReposi
     assertPsychologist(actor);
     const observation = await repository.findById(id);
     if (!observation) throw Errors.notFound('Observation');
+    if (observation.tone === 'positive') throw Errors.conflict('Positive observations are celebrated, not reviewed.');
     if (observation.status !== 'pending') throw Errors.conflict('This observation has already been reviewed.');
     if (observation.level === 'significant' && body.developmentArea === undefined) {
       throw Errors.validation([{ field: 'developmentArea', message: 'is required for Significant observations' }]);

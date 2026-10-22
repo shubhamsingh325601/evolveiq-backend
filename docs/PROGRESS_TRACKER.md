@@ -28,6 +28,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Review queue list + filters (Pending/Significant/From parents/Reviewed/school) | Done | | on `API`, not yet merged to `main` |
 | Observation detail + related history | Done | | on `API`, not yet merged to `main` |
 | Review action (tag area, note, assign/no-action) | Done | | on `API`, not yet merged to `main`. One DB transaction with the recommended assignments; re-review → 409 |
+| Positive observations (tone) | Done | | Client feedback 21 Oct 2026; not yet committed. `tone` (concern / positive, default concern); positive = status `celebrated`, never reviewed (409), no Level (400); DB CHECKs; queue `tone` filter. Migrations `20261021000000_observation_celebrated` and `20261021000100_observation_tone`: deploy them before the frontend that sends `tone` |
 
 ## Activities
 | Item | Status | Owner | Notes |
@@ -42,6 +43,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Growth areas (5-cap) calculation | Done | | on `API`, not yet merged to `main`. Derived from "Assign & mark reviewed" development areas |
 | Monthly summary generation (Parent-safe) | Done | | on `API`, not yet merged to `main`. Template text; current month live, finished months stored and immutable (IST months) |
 | Streak calculation | Done | | on `API`, not yet merged to `main`. Asia/Kolkata days |
+| Stars | Done | | Client feedback 21 Oct 2026; not yet committed. `GET /students/:studentId/stars` (student, parent, teacher, psychologist; student scope), paged, newest first; the monthly summary counts the month's stars; demo seed has stars from teachers and parents |
 
 ## School / Platform administration
 | Item | Status | Owner | Notes |

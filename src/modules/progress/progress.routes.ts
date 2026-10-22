@@ -2,6 +2,7 @@
 //
 //   /api/v1/students/:studentId/growth-areas
 //   /api/v1/students/:studentId/streak
+//   /api/v1/students/:studentId/stars
 //   /api/v1/students/:studentId/monthly-summaries/:month
 //
 // The same parent-safe responses for every allowed audience; who reaches which student is the
@@ -16,6 +17,8 @@ import {
   GrowthAreasResponseSchema,
   MonthlySummaryParamsSchema,
   MonthlySummaryResponseSchema,
+  StarListResponseSchema,
+  StarsQuerySchema,
   StreakResponseSchema,
   StudentIdParamsSchema,
 } from './progress.schemas.js';
@@ -66,6 +69,23 @@ const progressRoutes: FastifyPluginAsyncZod<ProgressRoutesOptions> = async (app,
       response: { 200: StreakResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
     },
     handler: async (request) => service.streak(actorOf(request), request.params.studentId),
+  });
+
+  app.get('/:studentId/stars', {
+    onRequest: [app.authenticate, viewers],
+    schema: {
+      ...docs,
+      summary: 'Stars',
+      description:
+        `${scope} One star for every positive observation about the student — something good a ` +
+        'teacher or their parent noticed — with the giver\'s own words, name and role. Newest ' +
+        'first; paginated (`pagination.total` is the student\'s star count). Nothing clinical: a ' +
+        'positive observation has no Level or review, and its learning-behaviour area is left out.',
+      params: StudentIdParamsSchema,
+      querystring: StarsQuerySchema,
+      response: { 200: StarListResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
+    },
+    handler: async (request) => service.stars(actorOf(request), request.params.studentId, request.query),
   });
 
   app.get('/:studentId/monthly-summaries/:month', {

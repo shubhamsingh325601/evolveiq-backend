@@ -53,7 +53,9 @@ export const observationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesOptions
       summary: 'Write an observation (teacher)',
       description:
         `${describeRoles(teacherOnly.allowedRoles)} About a student of one of the teacher's classes ` +
-        '(otherwise 422 INVALID_REFERENCE, the same as an unknown student). `level` and ' +
+        '(otherwise 422 INVALID_REFERENCE, the same as an unknown student). `tone` defaults to ' +
+        '"concern" (status "pending", for review); "positive" is a star for the student (status ' +
+        '"celebrated", never reviewed) and takes no `level` (400). `level` and ' +
         '`learningBehaviourArea` are optional. Parents use POST /api/v1/family/observations.',
       body: TeacherObservationBodySchema,
       response: { 201: TeacherObservationResponseSchema, ...errorResponses(400, 401, 403, 422, 500) },
@@ -89,7 +91,8 @@ export const observationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesOptions
       description:
         `${describeRoles(psychologistOnly.allowedRoles)} Every school. Filters: \`status\` ` +
         '(Pending / Reviewed), `level=significant` (Significant), `authorRole=parent` (From ' +
-        'parents), `schoolId` (by school), `studentId`, `area`. Paginated; by creation time.',
+        'parents), `schoolId` (by school), `studentId`, `area`, `tone` ("concern" leaves the ' +
+        "students' stars out). Paginated; by creation time.",
       querystring: ReviewQueueQuerySchema,
       response: { 200: ReviewQueueResponseSchema, ...errorResponses(400, 401, 403, 500) },
     },
@@ -121,7 +124,8 @@ export const observationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesOptions
         '`"no_action"` ("No action needed") assigns nothing. Both mark the observation Reviewed. ' +
         'Everything happens in ONE database transaction: if any part fails, nothing is saved. ' +
         '`developmentArea` is required when the observation is Significant (400). A review cannot ' +
-        'be changed: reviewing again → 409. Unknown or archived activity → 422.',
+        'be changed: reviewing again → 409. A positive observation is never reviewed → 409. ' +
+        'Unknown or archived activity → 422.',
       params: ObservationIdParamsSchema,
       body: ReviewBodySchema,
       response: { 200: ReviewResponseSchema, ...errorResponses(400, 401, 403, 404, 409, 422, 500) },
@@ -145,7 +149,8 @@ export const familyObservationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesO
       summary: 'Write an observation (parent)',
       description:
         `${describeRoles(parentOnly.allowedRoles)} About one of the parent's own children (otherwise ` +
-        '422 INVALID_REFERENCE). Parents cannot send `level` or `learningBehaviourArea` (400). ' +
+        '422 INVALID_REFERENCE). `tone` defaults to "concern"; "positive" is a star for the child, ' +
+        'celebrated at once. Parents cannot send `level` or `learningBehaviourArea` (400). ' +
         'The response contains only what the parent wrote and its status.',
       body: ParentObservationBodySchema,
       response: { 201: ParentObservationResponseSchema, ...errorResponses(400, 401, 403, 422, 500) },

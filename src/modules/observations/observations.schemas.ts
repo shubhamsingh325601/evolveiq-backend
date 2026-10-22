@@ -5,6 +5,9 @@
 //   ParentObservation    what a parent wrote + its status. Nothing clinical.
 //   TeacherObservation   what a teacher wrote + status + the psychologist's teacher-only note.
 //   ReviewObservation    the psychologist's full view (queue, detail, history).
+//
+// Every observation has a tone: a concern (reviewed by a psychologist, as before) or a positive
+// one (a star for the student, celebrated straight away and never reviewed).
 import { z } from 'zod';
 import { PAGE_QUERY_FIELDS, PaginationSchema, SORT_ORDERS } from '../../shared/pagination/index.js';
 import {
@@ -17,11 +20,13 @@ import {
   OBSERVATION_FREQUENCY_LABELS,
   OBSERVATION_LEVEL_LABELS,
   OBSERVATION_STATUS_LABELS,
+  OBSERVATION_TONE_LABELS,
   OBSERVATION_WHEN_LABELS,
   ObservationArea,
   ObservationFrequency,
   ObservationLevel,
   ObservationStatus,
+  ObservationTone,
   ObservationWhen,
 } from './observation-options.js';
 
@@ -33,7 +38,14 @@ const freeText = (max: number) => z.string().max(max).regex(FREE_TEXT, 'must not
 const AreaSchema = z.enum(ObservationArea).meta({ description: describeOptions(OBSERVATION_AREA_LABELS) });
 const WhenSchema = z.enum(ObservationWhen).meta({ description: describeOptions(OBSERVATION_WHEN_LABELS) });
 const HowOftenSchema = z.enum(ObservationFrequency).meta({ description: describeOptions(OBSERVATION_FREQUENCY_LABELS) });
-const LevelSchema = z.enum(ObservationLevel).meta({ description: `Teachers only. ${describeOptions(OBSERVATION_LEVEL_LABELS)}` });
+const LevelSchema = z
+  .enum(ObservationLevel)
+  .meta({ description: `Teachers only, and only on a concern. ${describeOptions(OBSERVATION_LEVEL_LABELS)}` });
+const ToneSchema = z.enum(ObservationTone).meta({
+  description:
+    `${describeOptions(OBSERVATION_TONE_LABELS)}. A positive observation is a star for the student: ` +
+    'celebrated at once, never reviewed.',
+});
 const LearningBehaviourAreaSchema = z
   .enum(LearningBehaviourArea)
   .meta({ description: `Teachers only. ${describeOptions(LEARNING_BEHAVIOUR_AREA_LABELS)}` });
@@ -43,6 +55,7 @@ const StatusSchema = z.enum(ObservationStatus).meta({ description: describeOptio
 // ---------- Create ----------
 const COMMON_FIELDS = {
   studentId: Uuid.meta({ description: 'The student the observation is about.' }),
+  tone: ToneSchema.default('concern'),
   area: AreaSchema,
   description: freeText(2000).meta({ description: 'What was observed (free text, ≤ 2000 characters).' }),
   when: WhenSchema,
@@ -99,6 +112,7 @@ export const ReviewQueueQuerySchema = z.strictObject({
   ...PAGE_QUERY_FIELDS,
   sortOrder: z.enum(SORT_ORDERS).default('desc').meta({ description: 'By creation time (default "desc", newest first).' }),
   status: StatusSchema.optional().meta({ description: '"pending" = Pending, "reviewed" = Reviewed.' }),
+  tone: ToneSchema.optional().meta({ description: '"concern" = only what is for review; "positive" = only stars.' }),
   level: LevelSchema.optional().meta({ description: '"significant" = the Significant filter.' }),
   authorRole: z.enum(['parent', 'teacher']).optional().meta({ description: '"parent" = From parents.' }),
   schoolId: Uuid.optional().meta({ description: 'By school.' }),
@@ -112,7 +126,17 @@ const Iso = z.iso.datetime();
 const Id = z.string().meta({ format: 'uuid' });
 
 export const ParentObservationSchema = z
-  .object({ id: Id, studentId: Id, area: AreaSchema, description: z.string(), when: WhenSchema, howOften: HowOftenSchema, status: StatusSchema, createdAt: Iso })
+  .object({
+    id: Id,
+    studentId: Id,
+    tone: ToneSchema,
+    area: AreaSchema,
+    description: z.string(),
+    when: WhenSchema,
+    howOften: HowOftenSchema,
+    status: StatusSchema,
+    createdAt: Iso,
+  })
   .meta({ id: 'ParentObservation' });
 export type ParentObservationDto = z.output<typeof ParentObservationSchema>;
 
@@ -120,6 +144,7 @@ export const TeacherObservationSchema = z
   .object({
     id: Id,
     studentId: Id,
+    tone: ToneSchema,
     area: AreaSchema,
     description: z.string(),
     when: WhenSchema,
@@ -142,6 +167,7 @@ export const ReviewObservationSchema = z
     schoolId: Id,
     student: PersonSchema,
     author: PersonSchema.extend({ role: z.enum(['parent', 'teacher']) }),
+    tone: ToneSchema,
     area: AreaSchema,
     description: z.string(),
     when: WhenSchema,

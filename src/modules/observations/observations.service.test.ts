@@ -11,6 +11,7 @@ const reviewed: ObservationRecord = {
   studentId: '33333333-3333-4333-8333-333333333333',
   authorId: '44444444-4444-4444-8444-444444444444',
   authorRole: 'teacher',
+  tone: 'concern',
   area: 'behaviour',
   description: 'Pushed a classmate.',
   observedWhen: 'today',
@@ -35,6 +36,7 @@ describe('toParentDto — parent allow-list', () => {
     expect(dto).toEqual({
       id: reviewed.id,
       studentId: reviewed.studentId,
+      tone: 'concern',
       area: 'behaviour',
       description: 'Pushed a classmate.',
       when: 'today',
@@ -47,13 +49,31 @@ describe('toParentDto — parent allow-list', () => {
       expect(raw, secret).not.toContain(secret);
     }
   });
+
+  test('a positive observation reads as celebrated, with its tone', () => {
+    const star: ObservationRecord = {
+      ...reviewed,
+      authorRole: 'parent',
+      tone: 'positive',
+      status: 'celebrated',
+      level: null,
+      learningBehaviourArea: null,
+      reviewOutcome: null,
+      developmentArea: null,
+      teacherOnlyNote: null,
+      reviewedAt: null,
+      reviewedBy: null,
+      assignments: [],
+    };
+    expect(toParentDto(star)).toMatchObject({ tone: 'positive', status: 'celebrated' });
+  });
 });
 
 describe('toTeacherDto — teacher allow-list', () => {
   test('their observation, status, review date and the teacher-only note; no reviewer, development area or assignments', () => {
     const dto = toTeacherDto(reviewed);
     expect(Object.keys(dto).sort()).toEqual(
-      ['area', 'createdAt', 'description', 'howOften', 'id', 'learningBehaviourArea', 'level', 'reviewedAt', 'status', 'studentId', 'teacherOnlyNote', 'when'],
+      ['area', 'createdAt', 'description', 'howOften', 'id', 'learningBehaviourArea', 'level', 'reviewedAt', 'status', 'studentId', 'teacherOnlyNote', 'tone', 'when'],
     );
     expect(dto).toMatchObject({
       level: 'significant',

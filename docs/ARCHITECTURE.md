@@ -61,12 +61,15 @@ live in services, not routes or controllers-as-routes. Classes live in the
     `student_id`).
 - `Class` → belongs to one school; `name` only, unique within the school
   ignoring case (citext).
-- `Observation` → author (Parent or Teacher), subject (Student), area,
-  free text, when/how-often, optional Level + Learning-behaviour area
-  (Teacher only), status (Pending/Reviewed), review outcome
+- `Observation` → author (Parent or Teacher), subject (Student), tone
+  (concern / positive), area, free text, when/how-often, optional Level +
+  Learning-behaviour area (Teacher only), status, review outcome
   ("Assign & mark reviewed" / "No action needed"), reviewedBy, tagged
-  development area, optional teacher-only note. The value lists are the
-  lead-confirmed Postgres enums; their labels live in
+  development area, optional teacher-only note. A concern goes Pending →
+  Reviewed. A positive observation (client feedback, 21 Oct 2026) is a star
+  for the student: Celebrated from the start, never reviewed, never given a
+  Level — so never Significant and never a growth area. The value lists are
+  the lead-confirmed Postgres enums; their labels live in
   `src/modules/observations/observation-options.ts`.
 - `Activity` → one global library; type (MCQ/text/image-pick/rating/
   media+response) + content (one Zod discriminated union), authored via a
@@ -78,9 +81,11 @@ live in services, not routes or controllers-as-routes. Classes live in the
 - `ActivityCompletion` → Student's submitted answer, one per assignment;
   contributes to progress/streak
 - Progress → derived on read: growth areas (the 5 most recent development
-  areas of the student's "Assign & mark reviewed" reviews), streak. Monthly
-  summary text is built live for the current month and stored once per
-  finished month in `monthly_summaries` (immutable).
+  areas of the student's "Assign & mark reviewed" reviews), streak, stars
+  (the student's positive observations, newest first). Monthly summary text —
+  activities, streak, the month's stars, growth areas — is built live for the
+  current month and stored once per finished month in `monthly_summaries`
+  (immutable).
 
 ## Access rules worth encoding explicitly
 - Parents never see clinical scores or psychologist notes.
@@ -95,11 +100,20 @@ live in services, not routes or controllers-as-routes. Classes live in the
 - Parent-facing responses are explicit allow-list DTOs (one response schema
   per audience): their own observations with status; their child's activities
   as done / not done, with when they were set and finished; streak;
-  growth-area names; monthly summary. Parent-only endpoints live under
+  growth-area names; stars; monthly summary. Parent-only endpoints live under
   `/api/v1/family/`.
+- A star is the same parent-safe shape for every audience (student, parent,
+  teacher, psychologist): the giver's words, the area, the giver's name and
+  role, the date. A positive observation has no Level or review, and its
+  learning-behaviour area is never part of a star.
 - Schools: Platform Admins and Psychologists read every school (the review
   queue filters by school); everyone else reads only their own.
-- Teachers and parents see only the observations they wrote.
+- Teachers and parents see only the observations they wrote. Something good
+  anyone wrote reaches the student's circle as a star, never as an
+  observation.
+- The frontend calls the `psychologist` role the school **Counsellor** (client
+  feedback, 21 Oct 2026). The role's value, routes and permissions are
+  unchanged.
 
 ## Time
 Timestamps are stored in UTC (`timestamptz`; every database session is pinned

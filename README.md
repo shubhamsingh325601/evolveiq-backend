@@ -1,6 +1,6 @@
 # EvolvIQ Backend API
 
-The EvolvIQ backend, built to [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/NAMING_CONVENTIONS.md`](docs/NAMING_CONVENTIONS.md). Working rules for contributors (and Claude) are in [`.claude/CLAUDE.md`](.claude/CLAUDE.md). Implemented: **authentication** (login, refresh, logout, admin-only registration), a **shared RBAC guard**, **school management**, **user management** (list / view / edit / deactivate / reactivate), **parent ↔ student links**, **classes**, and the core workflow **Observe → Review → Assign → Do → See**: observations, the psychologist's review queue, the global activity library, assignments, completions, growth areas, streaks and monthly summaries. Business rules the PRD left open were confirmed by the lead in October 2026 (§2, B1–B17).
+The EvolvIQ backend, built to [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/NAMING_CONVENTIONS.md`](docs/NAMING_CONVENTIONS.md). Working rules for contributors (and Claude) are in [`.claude/CLAUDE.md`](.claude/CLAUDE.md). Implemented: **authentication** (login, refresh, logout, admin-only registration), a **shared RBAC guard**, **school management**, **user management** (list / view / edit / deactivate / reactivate), **parent ↔ student links**, **classes**, and the core workflow **Observe → Review → Assign → Do → See**: observations (concerns, and positive ones that are stars for the student), the psychologist's review queue, the global activity library, assignments, completions, growth areas, streaks, stars and monthly summaries. Business rules the PRD left open were confirmed by the lead in October 2026 (§2, B1–B17).
 
 | | |
 |---|---|
@@ -112,7 +112,8 @@ npm run test:postman -- --env-var run=$RANDOM   # Postman collection via Newman 
 | B14 | Monthly summary: template text, no AI, no cron. Current month built live; a finished month is stored once and never changes. |
 | B15 | Streak: consecutive days with ≥ 1 completion, all 7 days, counting from yesterday if today isn't done yet. |
 | B16 | Days and months are Asia/Kolkata; timestamps are stored in UTC. |
-| B17 | Parents get only: their own observations with status, their child's activities done / not done (with the dates they were set and finished), streak, growth-area names, monthly summary. |
+| B17 | Parents get only: their own observations with status, their child's activities done / not done (with the dates they were set and finished), streak, growth-area names, monthly summary — and, since B18, their child's stars. |
+| B18 | *Client feedback, 21 Oct 2026.* An observation is a **concern** (as before: pending → reviewed) or **positive** (`tone`, default `concern`). A positive one is a **star** for the student: `celebrated` from the start, never reviewed (→ 409), never given a Level (→ 400), so never Significant and never a growth area. Stars (`/students/:studentId/stars`) show the giver's words, name and role to the student, their parent, their teachers and psychologists — never the learning-behaviour area. The monthly summary counts the month's stars. |
 
 Implementation choices within those rules (smallest reasonable option, flagged for review):
 
@@ -154,7 +155,9 @@ Layered modules exactly as in `docs/ARCHITECTURE.md`: **routes** (HTTP + Zod val
 │   │   ├── 20261001000000_schools_admin/   # schools.updated_at + list indexes
 │   │   ├── 20261009000000_people/          # parent_students, classes, class_teachers, class_students
 │   │   ├── 20261009010000_workflow/        # observations, activities, assignments, completions
-│   │   └── 20261009020000_progress/        # monthly_summaries (immutable)
+│   │   ├── 20261009020000_progress/        # monthly_summaries (immutable)
+│   │   ├── 20261021000000_observation_celebrated/  # observation_status + 'celebrated' (on its own: enum values commit first)
+│   │   └── 20261021000100_observation_tone/        # observations.tone (positive / concern) + its CHECKs + the stars index
 │   └── seed.dev.sql                     # 2 demo schools (dev only)
 ├── prisma.config.ts                     # Prisma 7 CLI config (loads .env)
 ├── scripts/bootstrap-admin.ts           # creates the first Platform Admin
@@ -189,7 +192,7 @@ Layered modules exactly as in `docs/ARCHITECTURE.md`: **routes** (HTTP + Zod val
 │   │   │   └── activities.{routes,schemas,service,repository}.ts    # library, assignments, completions
 │   │   └── progress/
 │   │       ├── business-time.ts         # Asia/Kolkata days / months, streak maths (pure)
-│   │       └── progress.{routes,schemas,service,repository}.ts      # growth areas, streak, monthly summary
+│   │       └── progress.{routes,schemas,service,repository}.ts      # growth areas, streak, stars, monthly summary
 │   ├── shared/
 │   │   ├── rbac/                        # requireRole() guard, route-access startup check, Role, Actor
 │   │   ├── errors/                      # AppError catalogue, error handler, Prisma mapping, error schema
@@ -235,13 +238,14 @@ The schools module uses the fluent Prisma Client API. The auth module keeps thre
 ## 5. Database design
 
 - `user_role` **enum** — the database rejects invalid roles.
-- **CHECK constraints** make invalid states unrepresentable (credential by role, school scope by role, normalised email / student ID, name lengths; observations: author is a parent or teacher, teacher-only fields, consistent review state, Significant needs a development area; assignments: recommended ⇔ linked to an observation). Prisma's schema language can't express CHECKs; they live in the migrations, and Prisma ignores them when diffing, so they are never dropped.
+- **CHECK constraints** make invalid states unrepresentable (credential by role, school scope by role, normalised email / student ID, name lengths; observations: author is a parent or teacher, teacher-only fields, consistent review state, Significant needs a development area, positive ⇔ celebrated, no Level on a positive one; assignments: recommended ⇔ linked to an observation). Prisma's schema language can't express CHECKs; they live in the migrations, and Prisma ignores them when diffing, so they are never dropped.
 - **Partial unique indexes** `users_email_key`, `users_student_login_id_key` (modelled in `schema.prisma` with the `partialIndexes` preview feature): the login lookup path and the race-safe duplicate guard.
 - **Schools:** `updated_at` (set by Prisma's `@updatedAt` on rename) and B-tree indexes on `name` and `created_at` to serve `ORDER BY … LIMIT/OFFSET` for the list endpoint.
 - **Timezones.** Every timestamp column is `timestamptz`. Prisma's pg driver adapter assumes the session time zone is UTC (it writes `DateTime` values as UTC wall-clock time with no offset, and replaces the offset of every `timestamptz` it reads with `+00:00`). On a server whose `TimeZone` isn't UTC, e.g. a local PostgreSQL installed in India, that shifted every timestamp by the offset (refresh tokens were stored as expiring 5 h 30 m early). `createPrismaClient` therefore pins every session to UTC (`options: '-c TimeZone=UTC'`), whatever the server default. Don't put an `options=` parameter in `DATABASE_URL`: pg lets the URL override it.
 - **People** (`20261009000000_people`): `parent_students` (PK `student_id` = one parent per student; existing `users.parent_id` links were moved here and the column dropped), `classes` (`name citext`, unique `(school_id, name)` = case-insensitive per school), `class_teachers` (PK `(class_id, teacher_id)`), `class_students` (PK `student_id` = one class per student), `users.updated_at`.
 - **Workflow** (`20261009010000_workflow`): Postgres enums for every observation list, `observations`, `activities` (`type` enum + `content` jsonb, `archived_at`), `assignments` (unique `(observation_id, activity_id)`), `activity_completions` (unique `assignment_id` = one completion per assignment).
 - **Progress** (`20261009020000_progress`): `monthly_summaries` (PK `(student_id, month)`); a trigger refuses every UPDATE and DELETE, so a stored summary can't change.
+- **Tone** (`20261021000000_observation_celebrated`, `20261021000100_observation_tone`): `observation_status` gains `celebrated` in a migration of its own (PostgreSQL won't use an enum value in the transaction that adds it); then `observation_tone` (`positive` / `concern`), `observations.tone` (default `concern`, so every earlier observation stays a concern), the review-state CHECK widened to `celebrated`, `(tone = 'positive') = (status = 'celebrated')`, no Level on a positive one, and a partial index `(student_id, created_at) WHERE tone = 'positive'` for a student's stars.
 - Same-school rules (parent ↔ child, class ↔ teacher / student) are checked in the same SQL statement that writes the link; `users.role` and `users.school_id` never change, so a valid link stays valid.
 - Foreign keys are `ON DELETE RESTRICT`, except `refresh_tokens.user_id → users` (`ON DELETE CASCADE`).
 
@@ -423,13 +427,13 @@ A class is `{ id, schoolId, name, createdAt, updatedAt }`. Teacher / student of 
 | `GET /api/v1/observations/mine?status&page&limit` | Teacher | `200 { "observations": TeacherObservation[], "pagination" }` | 400, 401, 403, 500 |
 | `POST /api/v1/family/observations` | Parent (own children) | `201 { "observation": ParentObservation }` | 400 (incl. `level` / `learningBehaviourArea`), 401, 403, 422, 500 |
 | `GET /api/v1/family/observations?status&page&limit` | Parent | `200 { "observations": ParentObservation[], "pagination" }` | 400, 401, 403, 500 |
-| `GET /api/v1/observations?status&level&authorRole&schoolId&studentId&area&sortOrder&page&limit` | Psychologist | `200 { "observations": ReviewObservation[], "pagination" }` | 400, 401, 403, 500 |
+| `GET /api/v1/observations?status&tone&level&authorRole&schoolId&studentId&area&sortOrder&page&limit` | Psychologist | `200 { "observations": ReviewObservation[], "pagination" }` | 400, 401, 403, 500 |
 | `GET /api/v1/observations/:observationId` | Psychologist | `200 { "observation", "history" }` (student's other observations, newest first, ≤ 20) | 400, 401, 403, 404, 500 |
-| `POST /api/v1/observations/:observationId/review` | Psychologist | `200 { "observation": ReviewObservation }` | 400, 401, 403, 404, **409**, 422, 500 |
+| `POST /api/v1/observations/:observationId/review` | Psychologist | `200 { "observation": ReviewObservation }` | 400, 401, 403, 404, **409** (already reviewed, or positive), 422, 500 |
 
-Create body: `{ studentId, area, description, when, howOften }` (+ teachers: optional `level`, `learningBehaviourArea`). Review body: `{ "outcome": "assigned", "activityIds": [1–10 ids], "developmentArea"?, "teacherOnlyNote"? }` or `{ "outcome": "no_action", "developmentArea"?, "teacherOnlyNote"? }`.
+Create body: `{ studentId, tone?, area, description, when, howOften }` (+ teachers: optional `level`, `learningBehaviourArea`). `tone` is `"concern"` (the default: status `pending`, for review) or `"positive"` (a star: status `celebrated`, never reviewed; a `level` with it → 400). Review body: `{ "outcome": "assigned", "activityIds": [1–10 ids], "developmentArea"?, "teacherOnlyNote"? }` or `{ "outcome": "no_action", "developmentArea"?, "teacherOnlyNote"? }`. The frontend's queue asks for `tone=concern`, so stars never wait there; they appear in a student's history for context.
 
-- **ParentObservation** = `id, studentId, area, description, when, howOften, status, createdAt` — nothing else.
+- **ParentObservation** = `id, studentId, tone, area, description, when, howOften, status, createdAt` — nothing else.
 - **TeacherObservation** = the above + `level, learningBehaviourArea, teacherOnlyNote, reviewedAt` (null while pending).
 - **ReviewObservation** = everything, with `student`, `author`, and `review { outcome, developmentArea, teacherOnlyNote, reviewedBy, reviewedAt, activityIds }` (null while pending).
 
@@ -458,7 +462,8 @@ Students (themselves), Parents (own children), Teachers (their classes' students
 |---|---|
 | `GET /api/v1/students/:studentId/growth-areas` | `200 { "growthAreas": [{ "name": "Managing feelings" }, …] }` — at most 5, newest first |
 | `GET /api/v1/students/:studentId/streak` | `200 { "streak": { "days": 3 } }` |
-| `GET /api/v1/students/:studentId/monthly-summaries/:month` (`YYYY-MM`) | `200 { "summary": { studentId, month, text, isFinal } }`; future month → 400, before the account existed → 404 |
+| `GET /api/v1/students/:studentId/stars?page&limit` | `200 { "stars": [{ id, studentId, area, description, givenBy: { fullName, role }, createdAt }], "pagination" }` — one per positive observation, newest first; `pagination.total` is the count |
+| `GET /api/v1/students/:studentId/monthly-summaries/:month` (`YYYY-MM`) | `200 { "summary": { studentId, month, text, isFinal } }` (counts the month's stars); future month → 400, before the account existed → 404 |
 
 **Business dates.** Timestamps are stored in UTC; streak days and summary months are **Asia/Kolkata** calendar days / months (`src/modules/progress/business-time.ts`): an activity completed at 00:15 IST on 1 November (18:45 UTC on 31 October) counts for 1 November.
 
@@ -498,7 +503,7 @@ Students (themselves), Parents (own children), Teachers (their classes' students
 | `npm run db:migrate:dev` | `prisma migrate dev` — create a new migration after editing `schema.prisma` (development) |
 | `npm run db:migrate:status` | Show applied / pending migrations |
 | `npm run db:seed-dev` | Insert the two demo schools |
-| `npm run db:seed-demo` | Development only: a full demo (two schools, every role, classes, activities, observations, reviews, completions) through the real API. The same people as the frontend's offline mock; adults sign in with `EvolvIQ-Demo-2026`, students (`RV-1001`…) with PIN `246810`. Does nothing if it has already run. |
+| `npm run db:seed-demo` | Development only: a full demo (two schools, every role, classes, activities, concerns at every stage of review, stars from teachers and parents, completions) through the real API. The same people as the frontend's offline mock; adults sign in with `EvolvIQ-Demo-2026`, students (`RV-1001`…) with PIN `246810`. Does nothing if it has already run. |
 | `npm run bootstrap:admin` | Create the first Platform Admin from `BOOTSTRAP_ADMIN_*` (idempotent) |
 | `npm test` / `test:unit` / `test:integration` | Vitest (integration needs `TEST_DATABASE_URL`) |
 | `npm run test:postman` | Run the Postman collection with Newman against `{{baseUrl}}` (Newman is fetched on demand with `npx`, not installed with the project) |
@@ -596,7 +601,7 @@ npm run test:postman -- --env-var baseUrl=http://localhost:3000 --env-var run=$R
 
 ## 12. Test coverage
 
-**618 tests: 214 unit (Vitest) + 404 API integration (Vitest + Supertest, real PostgreSQL).** Tests are colocated with the code they cover (`<name>.test.ts`). Tests of `*.routes.ts` / `*.repository.ts` files (`*.routes*.test.ts`, `*.repository*.test.ts`) and of the database client (`shared/db/*.test.ts`) form the integration project; everything else is unit. All 63 tests of the previous JavaScript suite were ported case-for-case.
+**644 tests: 224 unit (Vitest) + 420 API integration (Vitest + Supertest, real PostgreSQL).** Tests are colocated with the code they cover (`<name>.test.ts`). Tests of `*.routes.ts` / `*.repository.ts` files (`*.routes*.test.ts`, `*.repository*.test.ts`) and of the database client (`shared/db/*.test.ts`) form the integration project; everything else is unit. All 63 tests of the previous JavaScript suite were ported case-for-case.
 
 | File | Cases |
 |---|---|
@@ -612,11 +617,11 @@ npm run test:postman -- --env-var baseUrl=http://localhost:3000 --env-var run=$R
 | `modules/users/users.routes.manage.test.ts` (33) | Edit adults / students (normalised; login with the new identifier), single-field edit, student email / adult studentId → 400, immutable role / school / parent / active / secrets → 400, invalid bodies, duplicates (any case) → 409, School Admin scope (404 outside, nothing changes); School Admin deactivation (tokens revoked, login 403, logout 401), no self-deactivation / self-reactivation; reactivation restores login but not old sessions, idempotent, scope |
 | `modules/users/parent-students.routes.test.ts` (20) | RBAC; link → 201 and visible on `/users`; parent with many children; second parent / same link → 409; 5 concurrent links → one wins; cross-school → 422; School Admin other school → 422; wrong roles / inactive / unknown → 422 naming the field; unlink and relink; unlink out of scope → 404; School Admin and Parent list scope; register `parentId` writes the link |
 | `modules/schools/classes.routes.test.ts` (27) | RBAC (Parent, Psychologist, Platform Admin → 403; Teacher read-only); create (+ Location, `schoolId` in body → 400); duplicate names any case → 409, same name in another school OK; rename (409, 404 other school); many teachers ↔ many classes; idempotent assignment; cross-school / wrong role → 404; one class per student (409), move = remove + add, 4 concurrent adds → one wins; teacher sees only own classes and their students |
-| `modules/observations/observations.routes.test.ts` (45) | RBAC for all 7 routes; teacher create (teacher-only fields, scope → 422, every enum value accepted, 7 invalid inputs); parent create (level / learning-behaviour area → 400, not ignored; own children only); teacher / parent see only their own (vs DB), parent never sees teacher observations or anything clinical after review; teacher sees the note but not reviewer / area; queue filters vs DB (Pending, Significant, From parents, Reviewed, by school, combined, 6 invalid); detail + history; review assigned / no_action; re-review → 409; 5 concurrent reviews → one; Significant needs an area; every development area, no "other"; 7 invalid review bodies; archived / unknown activity → 422; **atomicity**: injected failures at "mark reviewed" and at the 2nd assignment roll everything back |
+| `modules/observations/observations.routes.test.ts` (52) | RBAC for all 7 routes; teacher create (teacher-only fields, scope → 422, every enum value accepted, 8 invalid inputs); parent create (level / learning-behaviour area → 400, not ignored; own children only; a positive one is celebrated); positive observations: celebrated at once with no Level, a Level → 400, review → 409 with nothing changed, never in Pending / Reviewed, `tone` filter, the database refuses a star in a review state or with a Level; teacher / parent see only their own (vs DB), parent never sees teacher observations or anything clinical after review; teacher sees the note but not reviewer / area; queue filters vs DB (Pending, Significant, From parents, Reviewed, by school, combined, 6 invalid); detail + history; review assigned / no_action; re-review → 409; 5 concurrent reviews → one; Significant needs an area; every development area, no "other"; 7 invalid review bodies; archived / unknown activity → 422; **atomicity**: injected failures at "mark reviewed" and at the 2nd assignment roll everything back |
 | `modules/activities/activities.routes.test.ts` (60) | 5 types created via the union; 15 invalid contents → 400; RBAC (Psychologist writes, Teacher browses); global library across schools; edit before assignment; archive (idempotent, hidden from teachers, not assignable, no delete endpoint); type / options frozen once assigned (4 changes → 409, title / prompt still editable, review assignment freezes too); direct assignment scope (422), psychologist can't assign directly; staff view with answers; 5 valid answers; wrong type / option → 400; 8 invalid answers; one completion (409), 5 concurrent → one; other students → 404; student sees only own; parent sees done / not done and never answers |
-| `modules/progress/progress.routes.test.ts` (22) | Fixed clock (IST date ≠ UTC date). Access (student, parent, teacher, psychologist → 200; anyone else → 404; admins → 403); growth areas: only "assigned" with an area, newest first, never > 5, older drop off, distinct, no add endpoint; streak: IST vs UTC days, today not done, 00:01 IST, missed day, none, month boundary + weekends, duplicates and future; summary: current month live and not stored, IST month boundaries, finished month stored once and unchanged by later data, DB refuses UPDATE / DELETE, growth areas as of month end (IST), concurrent first requests → one row, future / too old / bad format, no clinical text |
-| `modules/progress/business-time.test.ts` (30), `progress.service.test.ts` (5) | IST day / month boundaries (18:30 UTC), leap years, calendar arithmetic, streak and longest-run rules; the summary template |
-| `modules/observations/observations.service.test.ts` (4), `modules/activities/activities.service.test.ts` (3) | Allow-list mappers on fully populated records: parent / family DTOs carry no clinical value, no answer |
+| `modules/progress/progress.routes.test.ts` (26) | Fixed clock (IST date ≠ UTC date). Access (student, parent, teacher, psychologist → 200; anyone else → 404; admins → 403); stars: none yet, a teacher's and a parent's positive observations newest first and the same for every viewer, concerns never stars, exact keys and never the learning-behaviour area, paging, a month's stars in its summary; growth areas: only "assigned" with an area, newest first, never > 5, older drop off, distinct, no add endpoint; streak: IST vs UTC days, today not done, 00:01 IST, missed day, none, month boundary + weekends, duplicates and future; summary: current month live and not stored, IST month boundaries, finished month stored once and unchanged by later data, DB refuses UPDATE / DELETE, growth areas as of month end (IST), concurrent first requests → one row, future / too old / bad format, no clinical text |
+| `modules/progress/business-time.test.ts` (30), `progress.service.test.ts` (8) | IST day / month boundaries (18:30 UTC), leap years, calendar arithmetic, streak and longest-run rules; the summary template, stars included; the star mapper |
+| `modules/observations/observations.service.test.ts` (5), `modules/activities/activities.service.test.ts` (3) | Allow-list mappers on fully populated records: parent / family DTOs carry no clinical value, no answer; a positive observation reads as celebrated |
 | `modules/users/student-scope.test.ts` (6) | The student-scope rule per role |
 | `modules/schools/schools.repository.test.ts` (1) | Captures Prisma's SQL: the list query contains `ILIKE`, `ORDER BY "name" DESC`, `LIMIT` and `OFFSET`, and the count is filtered too |
 | `modules/schools/schools.service.test.ts` (13) | Trimming, DTO mapping, typed 404s, error propagation, page → skip/take, defaults, pagination metadata table |
