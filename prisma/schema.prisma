@@ -89,6 +89,13 @@ model User {
   assignments          Assignment[]  @relation("AssignmentStudent")
   assignmentsGiven     Assignment[]  @relation("AssignmentAssigner")
   monthlySummaries     MonthlySummary[]
+  consentsAbout        Consent[]           @relation("ConsentStudent")
+  consentsDecided      Consent[]           @relation("ConsentDecider")
+  wellnessCheckins     WellnessCheckin[]   @relation("WellnessStudent")
+  wellnessRecorded     WellnessCheckin[]   @relation("WellnessRecorder")
+  supportPlans         SupportPlan[]       @relation("SupportStudent")
+  supportPlansWritten  SupportPlan[]       @relation("SupportAuthor")
+  notificationState    NotificationState?
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -393,4 +400,105 @@ model MonthlySummary {
 
   @@id([studentId, month])
   @@map("monthly_summaries")
+}
+
+enum ConsentPurpose {
+  /// The family allows daily wellbeing check-ins to be recorded.
+  wellness_tracking
+  /// The family allows the school's teachers and counsellor to see those check-ins.
+  wellness_sharing
+
+  @@map("consent_purpose")
+}
+
+/// A family's decision about one purpose. No row = not decided yet = not allowed.
+model Consent {
+  studentId   String         @map("student_id") @db.Uuid
+  purpose     ConsentPurpose
+  granted     Boolean
+  /// The parent who made the decision.
+  decidedById String         @map("decided_by_id") @db.Uuid
+  decidedAt   DateTime       @default(now()) @map("decided_at") @db.Timestamptz(6)
+
+  student   User @relation("ConsentStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  decidedBy User @relation("ConsentDecider", fields: [decidedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([studentId, purpose])
+  @@map("consents")
+}
+
+/// One self-reported day of wellbeing per student (mood and energy 1-5, optional sleep and
+/// active minutes). Non-clinical: it is the family's own note, not a measurement or a diagnosis.
+model WellnessCheckin {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId     String   @map("student_id") @db.Uuid
+  recordedById  String   @map("recorded_by_id") @db.Uuid
+  /// The Asia/Kolkata calendar day the check-in is about.
+  day           DateTime @db.Date
+  mood          Int      @db.SmallInt
+  energy        Int      @db.SmallInt
+  sleepMinutes  Int?     @map("sleep_minutes") @db.SmallInt
+  activeMinutes Int?     @map("active_minutes") @db.SmallInt
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  student    User @relation("WellnessStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  recordedBy User @relation("WellnessRecorder", fields: [recordedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([studentId, day], map: "wellness_checkins_student_id_day_key")
+  @@map("wellness_checkins")
+}
+
+enum SupportCategory {
+  learning
+  attention
+  speech_language
+  sensory
+  physical_access
+  emotional
+  gifted
+  other
+
+  @@map("support_category")
+}
+
+enum SupportStatus {
+  active
+  in_review
+  closed
+
+  @@map("support_status")
+}
+
+/// A school-side support plan for a student who needs adjustments. Staff only: never shown to
+/// parents or students, and it never feeds the Holistic Index.
+model SupportPlan {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId   String          @map("student_id") @db.Uuid
+  createdById String          @map("created_by_id") @db.Uuid
+  category    SupportCategory
+  summary     String
+  strategies  String?
+  status      SupportStatus   @default(active)
+  /// When the plan should next be looked at again.
+  reviewOn    DateTime?       @map("review_on") @db.Date
+  closedAt    DateTime?       @map("closed_at") @db.Timestamptz(6)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  student   User @relation("SupportStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdBy User @relation("SupportAuthor", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([studentId, createdAt], map: "support_plans_student_id_created_at_idx")
+  @@map("support_plans")
+}
+
+/// When a user last opened their notifications. The feed itself is derived, not stored.
+model NotificationState {
+  userId String   @id @map("user_id") @db.Uuid
+  seenAt DateTime @default(now()) @map("seen_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("notification_states")
 }

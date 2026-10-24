@@ -4,6 +4,8 @@
 //   /api/v1/students/:studentId/streak
 //   /api/v1/students/:studentId/stars
 //   /api/v1/students/:studentId/monthly-summaries/:month
+//   /api/v1/students/:studentId/holistic-index
+//   /api/v1/students/:studentId/growth-moments
 //
 // The same parent-safe responses for every allowed audience; who reaches which student is the
 // shared student scope (a student outside it → 404).
@@ -15,6 +17,9 @@ import { createStudentScopeRepository } from '../users/student-scope.js';
 import { createProgressRepository } from './progress.repository.js';
 import {
   GrowthAreasResponseSchema,
+  GrowthMomentListResponseSchema,
+  GrowthMomentsQuerySchema,
+  HolisticIndexResponseSchema,
   MonthlySummaryParamsSchema,
   MonthlySummaryResponseSchema,
   StarListResponseSchema,
@@ -102,6 +107,39 @@ const progressRoutes: FastifyPluginAsyncZod<ProgressRoutesOptions> = async (app,
       response: { 200: MonthlySummaryResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
     },
     handler: async (request) => service.monthlySummary(actorOf(request), request.params.studentId, request.params.month),
+  });
+
+  app.get('/:studentId/holistic-index', {
+    onRequest: [app.authenticate, viewers],
+    schema: {
+      ...docs,
+      summary: 'EvolvIQ Holistic Index',
+      description:
+        `${scope} A 0–100 development index across five pillars (education, skills, physical, wellbeing, ` +
+        'character), worked out from what teachers and parents have noticed and from the activities the child ' +
+        'has finished: a documented formula, not a model. Includes the trend by school year and by month, a skill ' +
+        'profile, strengths, a playbook, and for each pillar an explainable insight (why, contributing factors, ' +
+        'recommended action, confidence). Parent-safe: nothing clinical, no concern counts or Levels.',
+      params: StudentIdParamsSchema,
+      response: { 200: HolisticIndexResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
+    },
+    handler: async (request) => service.holisticIndex(actorOf(request), request.params.studentId),
+  });
+
+  app.get('/:studentId/growth-moments', {
+    onRequest: [app.authenticate, viewers],
+    schema: {
+      ...docs,
+      summary: 'Growth moments',
+      description:
+        `${scope} The child's good days as a timeline, newest first: stars (teacher appreciation and things ` +
+        'noticed at home), activities finished, and milestones such as the first star or the tenth activity. ' +
+        'Paginated. Parent-safe: a moment never carries an answer, Level or review.',
+      params: StudentIdParamsSchema,
+      querystring: GrowthMomentsQuerySchema,
+      response: { 200: GrowthMomentListResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
+    },
+    handler: async (request) => service.growthMoments(actorOf(request), request.params.studentId, request.query),
   });
 };
 

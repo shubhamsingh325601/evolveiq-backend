@@ -74,7 +74,7 @@ async function reviewed(studentId: string, outcome: 'assigned' | 'no_action', de
 
 // ─────────────────────────────── Access ───────────────────────────────
 describe('who can see a student\'s progress', () => {
-  const paths = ['growth-areas', 'streak', 'stars', 'monthly-summaries/2026-11'];
+  const paths = ['growth-areas', 'streak', 'stars', 'monthly-summaries/2026-11', 'holistic-index', 'growth-moments'];
 
   test('the student, their parent, their teacher and psychologists → 200', async () => {
     for (const who of [a.student, a.parent, a.teacher, psych]) {

@@ -18,11 +18,14 @@ import authRoutes from './modules/auth/auth.routes.js';
 import { createAuthenticate } from './modules/auth/authenticate.js';
 import { initDummyHash } from './modules/auth/password.js';
 import { familyObservationsRoutes, observationsRoutes } from './modules/observations/observations.routes.js';
+import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import progressRoutes from './modules/progress/progress.routes.js';
 import classesRoutes from './modules/schools/classes.routes.js';
 import schoolsRoutes from './modules/schools/schools.routes.js';
 import parentStudentsRoutes from './modules/users/parent-students.routes.js';
+import { studentSupportRoutes, supportPlansRoutes } from './modules/support/support.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
+import wellbeingRoutes from './modules/wellbeing/wellbeing.routes.js';
 import type { Db } from './shared/db/prisma.js';
 import { errorHandler } from './shared/errors/index.js';
 import { assertRouteDeclaresAccess, publicAccess } from './shared/rbac/index.js';
@@ -84,6 +87,10 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     await app.register(activityCompletionsRoutes, { prefix: `${prefix}/activity-completions`, db });
     await app.register(studentAssignmentsRoutes, { prefix: `${prefix}/students`, db });
     await app.register(progressRoutes, { prefix: `${prefix}/students`, db, now });
+    await app.register(wellbeingRoutes, { prefix: `${prefix}/students`, db, now });
+    await app.register(studentSupportRoutes, { prefix: `${prefix}/students`, db, now });
+    await app.register(supportPlansRoutes, { prefix: `${prefix}/support-plans`, db, now });
+    await app.register(notificationsRoutes, { prefix: `${prefix}/notifications`, db, now });
     // Family app (parents): parent-safe responses only.
     await app.register(familyObservationsRoutes, { prefix: `${prefix}/family/observations`, db });
     await app.register(familyAssignmentsRoutes, { prefix: `${prefix}/family/children`, db });

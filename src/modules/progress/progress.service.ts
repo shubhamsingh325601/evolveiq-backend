@@ -8,6 +8,9 @@
 //   today has none yet.
 // Stars: the student's positive observations — something good a teacher or their parent
 //   noticed — newest first, with the giver's own words.
+// Holistic index: a documented formula over what has been noticed and what has been finished
+//   (holistic-index.ts); growth moments: stars, finished activities and milestones as a timeline
+//   (growth-moments.ts). Both are parent-safe for every audience.
 // Monthly summary: plain template sentences (no AI). The current month is built live on each
 //   request; a finished month is stored the first time it is requested and never changes.
 import type { DevelopmentArea } from '../../generated/prisma/enums.js';
@@ -18,7 +21,9 @@ import { DEVELOPMENT_AREA_LABELS } from '../observations/observation-options.js'
 import type { StudentScopeRepository } from '../users/student-scope.js';
 import { businessDate, businessMonth, currentStreak, longestRun, monthBounds, monthLabel } from './business-time.js';
 import type { ProgressRepository, StarRecord } from './progress.repository.js';
-import type { StarDto, StarsQuery } from './progress.schemas.js';
+import { buildGrowthMoments } from './growth-moments.js';
+import { buildHolisticIndex } from './holistic-index.js';
+import type { GrowthMomentsQuery, StarDto, StarsQuery } from './progress.schemas.js';
 
 export interface SummaryFacts {
   readonly name: string;
@@ -150,7 +155,32 @@ export function createProgressService(deps: { repository: ProgressRepository; st
     return { summary: { studentId: student.id, month, text, isFinal: !isCurrentMonth } };
   }
 
-  return { growthAreas, streak, stars, monthlySummary };
+  async function holisticIndex(actor: Actor, studentId: string) {
+    const student = await studentInScope(actor, studentId);
+    const at = now();
+    const [signals, assigned, completions] = await Promise.all([
+      repository.signals(student.id, at),
+      repository.assignedAt(student.id, at),
+      repository.completions(student.id, at),
+    ]);
+    const index = buildHolisticIndex(
+      { signals, assigned, completions: completions.map((c) => c.completedAt) },
+      at,
+      student.createdAt,
+    );
+    return { holisticIndex: { studentId: student.id, ...index, updatedAt: at.toISOString() } };
+  }
+
+  async function growthMoments(actor: Actor, studentId: string, query: GrowthMomentsQuery) {
+    const student = await studentInScope(actor, studentId);
+    const at = now();
+    const [stars, completions] = await Promise.all([repository.allStars(student.id, at), repository.completions(student.id, at)]);
+    const all = buildGrowthMoments(stars, completions);
+    const { page, limit } = query;
+    return { moments: all.slice((page - 1) * limit, page * limit), pagination: buildPagination(page, limit, all.length) };
+  }
+
+  return { growthAreas, streak, stars, monthlySummary, holisticIndex, growthMoments };
 }
 
 export type ProgressService = ReturnType<typeof createProgressService>;

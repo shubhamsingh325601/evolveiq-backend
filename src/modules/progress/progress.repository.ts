@@ -6,6 +6,11 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import type { DevelopmentArea } from '../../generated/prisma/enums.js';
 import type { Db } from '../../shared/db/prisma.js';
 import { BUSINESS_TIME_ZONE } from './business-time.js';
+import type { MomentCompletion, MomentStar } from './growth-moments.js';
+import type { Signal } from './holistic-index.js';
+
+// The most rows read for one student's index or timeline; a school year of notes is far below it.
+const EVIDENCE_LIMIT = 2000;
 
 const TZ = BUSINESS_TIME_ZONE;
 const GROWTH_AREA_LIMIT = 5;
@@ -40,6 +45,57 @@ export function createProgressRepository(db: Db) {
         db.observation.count({ where }),
       ]);
       return { items, total };
+    },
+
+    /** Every observation about the student up to `asOf`, reduced to what the index needs. */
+    async signals(studentId: string, asOf: Date): Promise<Signal[]> {
+      const rows = await db.observation.findMany({
+        where: { studentId, createdAt: { lte: asOf } },
+        orderBy: { createdAt: 'desc' },
+        take: EVIDENCE_LIMIT,
+        select: { tone: true, area: true, level: true, status: true, createdAt: true },
+      });
+      return rows.map((r) => ({ tone: r.tone, area: r.area, level: r.level, status: r.status, at: r.createdAt }));
+    },
+
+    /** When each activity was assigned to the student. */
+    async assignedAt(studentId: string, asOf: Date): Promise<Date[]> {
+      const rows = await db.assignment.findMany({
+        where: { studentId, createdAt: { lte: asOf } },
+        orderBy: { createdAt: 'desc' },
+        take: EVIDENCE_LIMIT,
+        select: { createdAt: true },
+      });
+      return rows.map((r) => r.createdAt);
+    },
+
+    /** The student's finished activities, newest first. Titles only: never the answer. */
+    async completions(studentId: string, asOf: Date): Promise<MomentCompletion[]> {
+      const rows = await db.activityCompletion.findMany({
+        where: { assignment: { studentId }, completedAt: { lte: asOf } },
+        orderBy: { completedAt: 'desc' },
+        take: EVIDENCE_LIMIT,
+        select: { id: true, completedAt: true, assignment: { select: { activity: { select: { title: true } } } } },
+      });
+      return rows.map((r) => ({ id: r.id, completedAt: r.completedAt, activityTitle: r.assignment.activity.title }));
+    },
+
+    /** Every star, newest first, for the timeline. */
+    async allStars(studentId: string, asOf: Date): Promise<MomentStar[]> {
+      const rows = await db.observation.findMany({
+        where: { studentId, tone: 'positive', createdAt: { lte: asOf } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        take: EVIDENCE_LIMIT,
+        select: STAR_SELECT,
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        area: r.area,
+        description: r.description,
+        authorRole: r.authorRole,
+        authorName: r.author.fullName,
+        createdAt: r.createdAt,
+      }));
     },
 
     /** Stars given in the business month [first, nextFirst), up to `asOf`. */

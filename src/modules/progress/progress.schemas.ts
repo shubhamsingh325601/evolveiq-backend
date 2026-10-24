@@ -66,3 +66,71 @@ export const MonthlySummaryResponseSchema = z
     }),
   })
   .meta({ id: 'MonthlySummaryResponse' });
+
+// ───────────────────────────── EvolvIQ Holistic Index ─────────────────────────────
+
+const Score = z.number().int().min(0).max(100);
+const Dimension = z.enum(['education', 'skills', 'physical', 'wellbeing', 'character']);
+
+export const HolisticIndexSchema = z
+  .object({
+    studentId: Id,
+    score: Score.meta({ description: 'The EvolvIQ Holistic Index: the mean of the five pillars, 0–100.' }),
+    dimensions: z
+      .array(z.object({ dimension: Dimension, score: Score }))
+      .length(5)
+      .meta({ description: 'The five pillars, outermost ring first.' }),
+    history: z
+      .array(
+        z.object({
+          schoolYear: z.string().meta({ example: '2026–27' }),
+          grade: z.string().nullable().meta({ description: 'The year group, when recorded. Always null today.' }),
+          score: Score,
+          isCurrent: z.boolean(),
+        }),
+      )
+      .meta({ description: 'The index at the end of each school year (April–March), oldest first; the last is the year in progress.' }),
+    monthly: z
+      .array(z.object({ month: z.string().meta({ example: '2026-10' }), score: Score }))
+      .meta({ description: 'The index at the end of each of the last six months, oldest first.' }),
+    skills: z.array(z.object({ skill: z.string(), score: Score })).meta({ description: 'One per area the child has been noticed in over the last year.' }),
+    strengths: z.array(z.string()),
+    playbook: z.array(z.string()).meta({ description: 'Short, practical next steps. Nothing clinical.' }),
+    insights: z
+      .array(
+        z.object({
+          dimension: Dimension,
+          trend: z.enum(['up', 'steady', 'down']),
+          title: z.string(),
+          why: z.string().meta({ description: 'Why this insight appears, in plain language.' }),
+          factors: z.array(z.string()).meta({ description: 'What contributed: counts of good things noticed and activities finished.' }),
+          action: z.string().meta({ description: 'A recommended next step.' }),
+          confidence: z.enum(['low', 'medium', 'high']).meta({ description: 'How much evidence the insight rests on.' }),
+        }),
+      )
+      .length(5),
+    evidence: z.object({ stars: z.number().int().min(0), activitiesCompleted: z.number().int().min(0) }),
+    updatedAt: z.iso.datetime(),
+  })
+  .meta({ id: 'HolisticIndex' });
+
+export const HolisticIndexResponseSchema = z.object({ holisticIndex: HolisticIndexSchema }).meta({ id: 'HolisticIndexResponse' });
+
+export const GrowthMomentsQuerySchema = z.strictObject({ ...PAGE_QUERY_FIELDS });
+export type GrowthMomentsQuery = z.output<typeof GrowthMomentsQuerySchema>;
+
+export const GrowthMomentSchema = z
+  .object({
+    id: z.string(),
+    kind: z.enum(['star', 'activity', 'milestone']),
+    title: z.string(),
+    detail: z.string().nullable().meta({ description: "A star's words, as the giver wrote them." }),
+    area: z.enum(ObservationArea).nullable(),
+    givenBy: z.object({ fullName: z.string(), role: z.enum(['parent', 'teacher']) }).nullable(),
+    occurredAt: z.iso.datetime(),
+  })
+  .meta({ id: 'GrowthMoment' });
+
+export const GrowthMomentListResponseSchema = z
+  .object({ moments: z.array(GrowthMomentSchema).meta({ description: 'Newest first.' }), pagination: PaginationSchema })
+  .meta({ id: 'GrowthMomentListResponse' });
