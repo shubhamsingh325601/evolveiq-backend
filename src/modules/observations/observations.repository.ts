@@ -80,7 +80,7 @@ export interface ReviewInput {
   readonly activityIds: readonly string[];
 }
 
-export type ReviewResult = 'reviewed' | 'not_found' | 'already_reviewed' | 'celebrated' | 'invalid_activities';
+export type ReviewResult = 'reviewed' | 'not_found' | 'already_reviewed' | 'invalid_activities';
 
 export function createObservationsRepository(db: Db) {
   return {
@@ -134,8 +134,6 @@ export function createObservationsRepository(db: Db) {
         const [observation] = await tx.$queryRaw<{ student_id: string; status: ObservationStatus }[]>`
           SELECT student_id, status FROM observations WHERE id = ${r.observationId}::uuid FOR UPDATE`;
         if (!observation) return 'not_found';
-        // Made a star while this review waited for the lock.
-        if (observation.status === 'celebrated') return 'celebrated';
         if (observation.status !== 'pending') return 'already_reviewed';
 
         if (r.activityIds.length > 0) {
@@ -169,17 +167,6 @@ export function createObservationsRepository(db: Db) {
         });
         return 'reviewed';
       });
-    },
-
-    // A pending concern becomes a star: positive, celebrated, and no Level (the CHECKs allow
-    // nothing else). One conditional UPDATE: it can only happen while the observation is still a
-    // pending concern, so a review that commits first wins and this changes nothing.
-    async celebrate(id: string): Promise<boolean> {
-      const { count } = await db.observation.updateMany({
-        where: { id, tone: 'concern', status: 'pending' },
-        data: { tone: 'positive', status: 'celebrated', level: null },
-      });
-      return count === 1;
     },
   };
 }

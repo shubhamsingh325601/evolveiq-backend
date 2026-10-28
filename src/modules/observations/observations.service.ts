@@ -14,11 +14,6 @@
 //   is a star for the student: 'celebrated' from the start, never reviewed (→ 409), never given
 //   a Level (→ 400) and so never Significant or a growth area.
 //
-// Good news recorded as a concern — by mistake, or before positive observations existed — can
-//   still become a star while it is pending: the teacher who wrote it, or a psychologist, makes
-//   it positive and celebrated, and its Level goes. Once reviewed it stays a concern, and a star
-//   never turns back into one.
-//
 // Each audience has its own mapper below. They COPY the allowed fields one by one — never
 // spread a record and delete fields — so a new column can't leak by default.
 import type { ObservationTone } from '../../generated/prisma/enums.js';
@@ -218,10 +213,9 @@ export function createObservationsService(deps: { repository: ObservationsReposi
       teacherOnlyNote: body.teacherOnlyNote?.trim() ?? null,
       activityIds: body.outcome === 'assigned' ? body.activityIds : [],
     });
-    // Re-checked under the row lock: a concurrent review — or celebration — may have won in between.
+    // Re-checked under the row lock: a concurrent review may have won in between.
     if (result === 'not_found') throw Errors.notFound('Observation');
     if (result === 'already_reviewed') throw Errors.conflict('This observation has already been reviewed.');
-    if (result === 'celebrated') throw Errors.conflict('Positive observations are celebrated, not reviewed.');
     if (result === 'invalid_activities') {
       throw Errors.invalidReference('activityIds', 'Every activity must exist and not be archived.');
     }
@@ -231,21 +225,7 @@ export function createObservationsService(deps: { repository: ObservationsReposi
     return toReviewDto(reviewed);
   }
 
-  // ---------- Concern → star (teacher who wrote it, or psychologist) ----------
-  async function celebrate(actor: Actor, id: string): Promise<void> {
-    if (actor.role !== Role.Teacher && actor.role !== Role.Psychologist) throw Errors.forbidden();
-    const observation = await repository.findById(id);
-    // A teacher only ever sees what they wrote, so anyone else's is "not found", not "forbidden".
-    if (!observation || (actor.role === Role.Teacher && observation.authorId !== actor.userId)) {
-      throw Errors.notFound('Observation');
-    }
-    if (observation.tone === 'positive') throw Errors.conflict('This observation is already a star.');
-    if (observation.status !== 'pending') throw Errors.conflict('This observation has already been reviewed.');
-    // Re-checked by the update itself: a review may have landed in between.
-    if (!(await repository.celebrate(id))) throw Errors.conflict('This observation has already been reviewed.');
-  }
-
-  return { createAsParent, createAsTeacher, listOwnAsParent, listOwnAsTeacher, queue, detail, review, celebrate };
+  return { createAsParent, createAsTeacher, listOwnAsParent, listOwnAsTeacher, queue, detail, review };
 }
 
 export type ObservationsService = ReturnType<typeof createObservationsService>;

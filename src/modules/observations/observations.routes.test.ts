@@ -3,8 +3,7 @@
 // DTOs, nothing clinical for parents), the psychologist's queue / detail / history, and the
 // review: one per observation (409), Significant needs a development area, assignments
 // created atomically with the review (rollback proven with injected failures). Positive
-// observations: celebrated at once, never reviewed, never given a Level. Good news recorded as a
-// concern becomes a star while it is pending (its author, or a psychologist), never afterwards.
+// observations: celebrated at once, never reviewed, never given a Level.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { ADMIN, SCHOOL_A, SCHOOL_B, createTestContext, type TestContext } from '../../../test/support/api-harness.js';
 import {
@@ -67,8 +66,7 @@ const assignmentsFor = async (id: string) =>
 // ─────────────────────────────── RBAC ───────────────────────────────
 describe('RBAC', () => {
   test('no token → 401 everywhere', async () => {
-    const celebrate = `${OBS}/99999999-9999-4999-8999-999999999999/celebrate`;
-    for (const [method, url] of [['POST', OBS], ['GET', OBS], ['GET', `${OBS}/mine`], ['POST', celebrate], ['POST', FAMILY], ['GET', FAMILY]] as const) {
+    for (const [method, url] of [['POST', OBS], ['GET', OBS], ['GET', `${OBS}/mine`], ['POST', FAMILY], ['GET', FAMILY]] as const) {
       expect((await ctx.send(method, url, { body: method === 'POST' ? {} : undefined })).status, `${method} ${url}`).toBe(401);
     }
   });
@@ -81,7 +79,6 @@ describe('RBAC', () => {
       ['GET', OBS, [a.teacher, a.parent, a.student, a.schoolAdmin]],
       ['GET', `${OBS}/${id}`, [a.teacher, a.parent, a.student, a.schoolAdmin]],
       ['POST', `${OBS}/${id}/review`, [a.teacher, a.parent, a.student, a.schoolAdmin], { outcome: 'no_action' }],
-      ['POST', `${OBS}/${id}/celebrate`, [a.parent, a.student, a.schoolAdmin]],
       ['POST', FAMILY, [a.teacher, a.student, a.schoolAdmin, psych], { studentId: a.student.id, ...base }],
       ['GET', FAMILY, [a.teacher, a.student, a.schoolAdmin, psych]],
     ];
@@ -485,100 +482,6 @@ describe('positive observations — stars, never reviewed', () => {
       [`UPDATE observations SET tone = 'positive' WHERE id = $1`, concern],
     ] as const) {
       await expect(ctx.pg.query(sql, [id]), sql).rejects.toThrow(/check constraint/);
-    }
-  });
-});
-
-// ─────────────────────────────── Concern → star ───────────────────────────────
-describe('good news recorded as a concern becomes a star', () => {
-  // The client's own case: praise sent as a Significant concern, before the tone choice existed.
-  const praise = { area: 'communication', description: 'Actively communicating, fluent in language.', level: 'significant' };
-  const celebrate = (id: string, token: string) => ctx.post(`${OBS}/${id}/celebrate`, undefined, token);
-  const starIds = async (token: string) =>
-    (await ctx.get(`/api/v1/students/${a.student.id}/stars?limit=100`, token)).body.stars.map((s: { id: string }) => s.id) as string[];
-  const queueIds = async (qs: string) =>
-    (await ctx.get(`${OBS}?limit=100&${qs}`, psych.token)).body.observations.map((o: { id: string }) => o.id) as string[];
-
-  test('by the teacher who wrote it: 204, then a star — positive, celebrated, no Level — and out of the queue', async () => {
-    const id = await teacherObservation({ ...praise, learningBehaviourArea: 'participation' });
-    expect(await queueIds('tone=concern&status=pending')).toContain(id);
-
-    expect((await celebrate(id, a.teacher.token)).status).toBe(204);
-
-    expect(await dbObservation(id)).toMatchObject({
-      tone: 'positive', status: 'celebrated', level: null, learning_behaviour_area: 'participation', reviewed_by_id: null,
-    });
-    expect(await queueIds('tone=concern')).not.toContain(id);
-    expect(await queueIds('status=pending')).not.toContain(id);
-    for (const who of [a.student, a.parent, a.teacher]) expect(await starIds(who.token)).toContain(id);
-    const mine = (await ctx.get(`${OBS}/mine?limit=100`, a.teacher.token)).body.observations.find((o: { id: string }) => o.id === id);
-    expect(mine).toMatchObject({ tone: 'positive', status: 'celebrated', level: null });
-  });
-
-  test("by a psychologist, for any pending concern — a parent's too", async () => {
-    const id = await parentObservation();
-    expect((await celebrate(id, psych.token)).status).toBe(204);
-    const mine = (await ctx.get(`${FAMILY}?limit=100`, a.parent.token)).body.observations.find((o: { id: string }) => o.id === id);
-    expect(Object.keys(mine).sort()).toEqual(PARENT_KEYS);
-    expect(mine).toMatchObject({ tone: 'positive', status: 'celebrated' });
-    expect(await starIds(a.parent.token)).toContain(id);
-  });
-
-  test("a teacher cannot for anyone else's → 404, and nothing changes", async () => {
-    const colleague = await newAccount(ctx, rootToken, 'teacher', SCHOOL_A);
-    await ctx.put(`/api/v1/classes/${a.classId}/teachers/${colleague.id}`, a.schoolAdmin.token);
-    const theirs = (await asTeacher({ studentId: a.student.id, ...base, ...praise }, colleague.token)).body.observation.id;
-    const fromParent = await parentObservation();
-    for (const id of [theirs, fromParent, '99999999-9999-4999-8999-999999999999']) {
-      expect((await celebrate(id, a.teacher.token)).status, id).toBe(404);
-    }
-    expect(await dbObservation(theirs)).toMatchObject({ tone: 'concern', status: 'pending', level: 'significant' });
-    expect(await dbObservation(fromParent)).toMatchObject({ tone: 'concern', status: 'pending' });
-  });
-
-  test('only while pending: reviewed → 409, already a star → 409; unknown → 404; malformed → 400', async () => {
-    const reviewed = await teacherObservation();
-    expect((await review(reviewed, { outcome: 'no_action' })).status).toBe(200);
-    const before = await dbObservation(reviewed);
-    for (const token of [a.teacher.token, psych.token]) {
-      const r = await celebrate(reviewed, token);
-      expect(r.status).toBe(409);
-      expect(r.body.error).toEqual({ code: 'CONFLICT', message: 'This observation has already been reviewed.' });
-    }
-    expect(await dbObservation(reviewed)).toEqual(before);
-
-    const star = (await asTeacher({ studentId: a.student.id, ...base, tone: 'positive' })).body.observation.id;
-    const again = await celebrate(star, psych.token);
-    expect(again.status).toBe(409);
-    expect(again.body.error).toEqual({ code: 'CONFLICT', message: 'This observation is already a star.' });
-
-    expect((await celebrate('99999999-9999-4999-8999-999999999999', psych.token)).status).toBe(404);
-    expect((await celebrate('nope', psych.token)).status).toBe(400);
-  });
-
-  test('once a star, it is never reviewed', async () => {
-    const id = await teacherObservation(praise);
-    expect((await celebrate(id, a.teacher.token)).status).toBe(204);
-    const r = await review(id, { outcome: 'no_action', developmentArea: 'communication' });
-    expect(r.status).toBe(409);
-    expect(r.body.error).toEqual({ code: 'CONFLICT', message: 'Positive observations are celebrated, not reviewed.' });
-    expect(await assignmentsFor(id)).toHaveLength(0);
-  });
-
-  test('a review and a celebration at once: exactly one wins, and the row matches it', async () => {
-    for (let round = 0; round < 5; round += 1) {
-      const id = await teacherObservation(praise);
-      const [reviewed, celebrated] = await Promise.all([
-        review(id, { outcome: 'assigned', activityIds: [activityA], developmentArea: 'communication' }),
-        celebrate(id, a.teacher.token),
-      ]);
-      const reviewWon = reviewed.status === 200;
-      expect(reviewWon ? celebrated.status : reviewed.status, `round ${round}`).toBe(409);
-      if (!reviewWon) expect(celebrated.status, `round ${round}`).toBe(204);
-      expect(await dbObservation(id)).toMatchObject(
-        reviewWon ? { tone: 'concern', status: 'reviewed' } : { tone: 'positive', status: 'celebrated', level: null },
-      );
-      expect(await assignmentsFor(id)).toHaveLength(reviewWon ? 1 : 0);
     }
   });
 });

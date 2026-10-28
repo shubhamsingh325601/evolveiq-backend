@@ -1,12 +1,10 @@
 // HTTP layer only: validation (Zod), RBAC wiring, status codes.
 //
-//   /api/v1/observations          Teacher (write + own list), Psychologist (queue, detail, review),
-//                                 both (make a pending concern a star)
+//   /api/v1/observations          Teacher (write + own list), Psychologist (queue, detail, review)
 //   /api/v1/family/observations   Parent (write + own list) — parent-safe responses only
 //
 // Every route declares exactly one response shape for its audience (see observations.schemas.ts).
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import { z } from 'zod';
 import type { Db } from '../../shared/db/prisma.js';
 import { errorResponses } from '../../shared/errors/index.js';
 import { actorOf, describeRoles, requireRole, Role } from '../../shared/rbac/index.js';
@@ -41,13 +39,11 @@ function serviceFor(db: Db) {
 }
 
 const docs = { tags: ['Observations'], security: [{ bearerAuth: [] }] };
-const NO_CONTENT = z.null().meta({ description: 'Done. No body.' });
 
 export const observationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesOptions> = async (app, { db }) => {
   const service = serviceFor(db);
   const teacherOnly = requireRole(Role.Teacher);
   const psychologistOnly = requireRole(Role.Psychologist);
-  const teacherOrPsychologist = requireRole(Role.Teacher, Role.Psychologist);
 
   // POST /api/v1/observations — a teacher writes an observation
   app.post('', {
@@ -137,28 +133,6 @@ export const observationsRoutes: FastifyPluginAsyncZod<ObservationsRoutesOptions
     handler: async (request) => ({
       observation: await service.review(actorOf(request), request.params.observationId, request.body),
     }),
-  });
-
-  // POST /api/v1/observations/:observationId/celebrate — good news recorded as a concern becomes a star
-  app.post('/:observationId/celebrate', {
-    onRequest: [app.authenticate, teacherOrPsychologist],
-    schema: {
-      ...docs,
-      summary: 'Make a pending concern a star (teacher, psychologist)',
-      description:
-        `${describeRoles(teacherOrPsychologist.allowedRoles)} For something good that was recorded as a ` +
-        'concern, by mistake or before positive observations existed. It becomes positive and ' +
-        '"celebrated": a star for the student, out of the review queue, and its Level is dropped (a ' +
-        "star is never Significant). Only while it is pending: reviewed → 409, already a star → 409. " +
-        "A teacher may do this only for an observation they wrote (anyone else's → 404); a " +
-        'psychologist for any. A star is never turned back into a concern.',
-      params: ObservationIdParamsSchema,
-      response: { 204: NO_CONTENT, ...errorResponses(400, 401, 403, 404, 409, 500) },
-    },
-    handler: async (request, reply) => {
-      await service.celebrate(actorOf(request), request.params.observationId);
-      return reply.code(204).send(null);
-    },
   });
 };
 

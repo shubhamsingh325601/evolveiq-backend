@@ -114,7 +114,6 @@ npm run test:postman -- --env-var run=$RANDOM   # Postman collection via Newman 
 | B16 | Days and months are Asia/Kolkata; timestamps are stored in UTC. |
 | B17 | Parents get only: their own observations with status, their child's activities done / not done (with the dates they were set and finished), streak, growth-area names, monthly summary — and, since B18, their child's stars. |
 | B18 | *Client feedback, 21 Oct 2026.* An observation is a **concern** (as before: pending → reviewed) or **positive** (`tone`, default `concern`). A positive one is a **star** for the student: `celebrated` from the start, never reviewed (→ 409), never given a Level (→ 400), so never Significant and never a growth area. Stars (`/students/:studentId/stars`) show the giver's words, name and role to the student, their parent, their teachers and psychologists — never the learning-behaviour area. The monthly summary counts the month's stars. |
-| B19 | *Client feedback, re-sent 28 Oct 2026.* Good news that went in as a concern — picked by mistake, or written before B18, when every observation was a concern — can be **made a star** while it is still pending: by the teacher who wrote it, or by a psychologist (`POST /observations/:observationId/celebrate`). It becomes positive and `celebrated`, its Level is dropped, and it leaves the queue; a reviewed one (→ 409) stays a concern, and a star is never turned back into one. |
 
 Implementation choices within those rules (smallest reasonable option, flagged for review):
 
@@ -431,7 +430,6 @@ A class is `{ id, schoolId, name, createdAt, updatedAt }`. Teacher / student of 
 | `GET /api/v1/observations?status&tone&level&authorRole&schoolId&studentId&area&sortOrder&page&limit` | Psychologist | `200 { "observations": ReviewObservation[], "pagination" }` | 400, 401, 403, 500 |
 | `GET /api/v1/observations/:observationId` | Psychologist | `200 { "observation", "history" }` (student's other observations, newest first, ≤ 20) | 400, 401, 403, 404, 500 |
 | `POST /api/v1/observations/:observationId/review` | Psychologist | `200 { "observation": ReviewObservation }` | 400, 401, 403, 404, **409** (already reviewed, or positive), 422, 500 |
-| `POST /api/v1/observations/:observationId/celebrate` | Teacher (only what they wrote; anyone else's → 404), Psychologist | `204` (now positive and `celebrated`, Level dropped) | 400, 401, 403, 404, **409** (already reviewed, or already a star), 500 |
 
 Create body: `{ studentId, tone?, area, description, when, howOften }` (+ teachers: optional `level`, `learningBehaviourArea`). `tone` is `"concern"` (the default: status `pending`, for review) or `"positive"` (a star: status `celebrated`, never reviewed; a `level` with it → 400). Review body: `{ "outcome": "assigned", "activityIds": [1–10 ids], "developmentArea"?, "teacherOnlyNote"? }` or `{ "outcome": "no_action", "developmentArea"?, "teacherOnlyNote"? }`. The frontend's queue asks for `tone=concern`, so stars never wait there; they appear in a student's history for context.
 

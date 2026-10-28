@@ -68,10 +68,7 @@ live in services, not routes or controllers-as-routes. Classes live in the
   development area, optional teacher-only note. A concern goes Pending →
   Reviewed. A positive observation (client feedback, 21 Oct 2026) is a star
   for the student: Celebrated from the start, never reviewed, never given a
-  Level — so never Significant and never a growth area. A pending concern
-  that was really good news can become one (the teacher who wrote it, or a
-  psychologist): Pending → Celebrated, its Level dropped; one conditional
-  UPDATE, so a review that commits first wins. The value lists are
+  Level — so never Significant and never a growth area. The value lists are
   the lead-confirmed Postgres enums; their labels live in
   `src/modules/observations/observation-options.ts`.
 - `Activity` → one global library; type (MCQ/text/image-pick/rating/
