@@ -29,6 +29,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Observation detail + related history | Done | | on `API`, not yet merged to `main` |
 | Review action (tag area, note, assign/no-action) | Done | | on `API`, not yet merged to `main`. One DB transaction with the recommended assignments; re-review → 409 |
 | Positive observations (tone) | Done | | Client feedback 21 Oct 2026; not yet committed. `tone` (concern / positive, default concern); positive = status `celebrated`, never reviewed (409), no Level (400); DB CHECKs; queue `tone` filter. Migrations `20261021000000_observation_celebrated` and `20261021000100_observation_tone`: deploy them before the frontend that sends `tone` |
+| Pending concern → star (`/observations/:id/celebrate`) | Done | | Client feedback re-sent 28 Oct 2026; not yet committed. The teacher who wrote it, or a psychologist; 204; reviewed / already a star → 409; another teacher's → 404; races a review safely (6 API tests). No migration: deploy it before the frontend that calls it |
 
 ## Activities
 | Item | Status | Owner | Notes |

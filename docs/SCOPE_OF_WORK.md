@@ -32,6 +32,8 @@ observations: a star)
 - Observation detail + related history lookup
 - Review action: tag development area, optional teacher-only note,
   "Assign & mark reviewed" or "No action needed"
+- Make a pending concern a star, when it was really good news (re-sent client
+  feedback, 28 Oct 2026): the teacher who wrote it, or a psychologist
 
 ### Activities
 - Activity library CRUD (simple-form authoring only — no builder)
