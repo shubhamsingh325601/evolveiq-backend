@@ -50,6 +50,18 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 |---|---|---|---|
 | School Admin CRUD (students/teachers/classes/parents) | Done | | on `API`, not yet merged to `main`. Create via `/auth/register`; list/view/edit/deactivate/reactivate via `/users`; parent links; classes with teachers / students. No delete (deactivation instead) |
 | Platform Admin CRUD (schools/users) | Done | | on `API`, not yet merged to `main`. Schools: create/list/view/rename. Users: create/list/view/edit/deactivate/reactivate |
+| Removal (users without records, classes, empty schools) | Done | | Client feedback 29 Oct 2026; not yet committed. `DELETE /users/:id` (409 `HAS_RECORDS` when records point at it), `/classes/:id` (students stay), `/schools/:id` (empty only) |
+| Imports (students, teachers, parents) | Done | | Client feedback 29 Oct 2026; not yet committed. `POST /imports/people`: up to 500 rows, every row checked and reported, dry run by default, all or nothing in one transaction, new classes created |
+
+## School life (client feedback, 29 Oct 2026)
+| Item | Status | Owner | Notes |
+|---|---|---|---|
+| Health and care needs | Done | | Not yet committed. `/students/:id/health` (GET parent/teacher/psychologist/school admin; PUT parent/school admin), `/classes/:id/health`; migration `20261029000000_health_attendance_notices_staff_honours` |
+| Attendance | Done | | Not yet committed. `/classes/:id/attendance` (range ≤ 62 days) and `PUT …/:day` (today or 30 days back); teachers of the class and the school admin |
+| Notice board | Done | | Not yet committed. `/notices` CRUD; audiences; platform notices for every school; an emergency contact needs a phone |
+| Staff reviews | Done | | Not yet committed. `/staff-reviews` (school admin; a teacher reads their own) |
+| Honours (Staff and Students of the Month) | Done | | Not yet committed. `/honours`; families see the Staff of the Month and their own child only |
+| Demo data for the above | Done | | Not yet committed. `db:seed-demo` adds them, and tops up a demo database seeded before 29 Oct 2026 |
 
 ## Quality
 | Item | Status | Owner | Notes |

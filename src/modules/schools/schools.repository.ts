@@ -50,6 +50,20 @@ export function createSchoolsRepository(db: Db) {
       }
     },
 
+    /** Deletes a school with no accounts and no classes (its notices go with it). */
+    async remove(id: string): Promise<'removed' | 'missing' | 'not_empty'> {
+      return db.$transaction(async (tx) => {
+        const school = await tx.school.findUnique({
+          where: { id },
+          select: { _count: { select: { users: true, classes: true } } },
+        });
+        if (!school) return 'missing';
+        if (school._count.users > 0 || school._count.classes > 0) return 'not_empty';
+        await tx.school.delete({ where: { id } });
+        return 'removed';
+      });
+    },
+
     /** One page + the total, filtered/sorted/paginated in the database (LIMIT/OFFSET). */
     async list(p: ListSchoolsParams): Promise<{ items: SchoolRecord[]; total: number }> {
       const orderBy = ORDER_BY[p.sortBy](p.sortOrder);

@@ -38,6 +38,8 @@ export const Errors = {
     new AppError(409, 'DUPLICATE_ACCOUNT', 'An account with this identifier already exists.', { field }),
   conflict: (message = 'The request conflicts with the current state of the resource.') =>
     new AppError(409, 'CONFLICT', message),
+  // Can't be removed while other records still point at it (switch it off instead).
+  hasRecords: (message: string) => new AppError(409, 'HAS_RECORDS', message),
   invalidReference: (field: string, message: string) =>
     new AppError(422, 'INVALID_REFERENCE', message, { field }),
   internal: () => new AppError(500, 'INTERNAL_ERROR', 'An unexpected error occurred.'),

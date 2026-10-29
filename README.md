@@ -467,6 +467,58 @@ Students (themselves), Parents (own children), Teachers (their classes' students
 
 **Business dates.** Timestamps are stored in UTC; streak days and summary months are **Asia/Kolkata** calendar days / months (`src/modules/progress/business-time.ts`): an activity completed at 00:15 IST on 1 November (18:45 UTC on 31 October) counts for 1 November.
 
+### 6.12 Health and care needs (client feedback, 29 Oct 2026)
+
+What the school should know to look after a student: conditions (`diabetes`, `asthma`, `epilepsy`, `severe_allergy`, `on_medication`, `specially_abled`, `visual_impairment`, `hearing_impairment`, `dyslexia`, `adhd`, `autism`, `speech_language`, `other`), allergies, medication, blood group, care notes and an emergency contact. It is the family's word, not a clinical record, and never feeds the Holistic Index. Through the student scope: parents (own children), teachers (their classes), school admins (their school), psychologists (any student); anyone else's student → 404. Students → 403.
+
+| Method & path | Who | Success |
+|---|---|---|
+| `GET /api/v1/students/:studentId/health` | Parent, Teacher, Psychologist, School Admin | `200 { "health": { studentId, conditions, bloodGroup, allergies, medications, careNotes, emergencyContact: { name, relation, phone } \| null, updatedBy: { fullName, role } \| null, updatedAt } }` — nothing recorded yet → an empty profile with `updatedAt: null` |
+| `PUT /api/v1/students/:studentId/health` | Parent, School Admin | `200` the same — replaces the whole profile (a field left out is cleared); a repeated condition, an unknown blood group, a contact without a phone → 400 |
+| `GET /api/v1/classes/:classId/health` | Teacher (own classes), School Admin | `200 { "profiles": [...] }` — only students with something recorded, by name |
+
+### 6.13 Attendance
+
+One record per student per Asia/Kolkata day: `present`, `late` or `absent`. A class's own teachers and its school's School Admin; another class → 404; anyone else → 403.
+
+| Method & path | Success |
+|---|---|
+| `GET /api/v1/classes/:classId/attendance?from&to` | `200 { "attendance": { classId, from, to, days: [{ day, markedBy, markedAt }], students: [{ id, fullName, present, late, absent, records: { "YYYY-MM-DD": status } }] } }` — defaults to this month so far; at most 62 days; no future days (400) |
+| `PUT /api/v1/classes/:classId/attendance/:day` | `200` the day as `GET` reads it. Body `{ records: [{ studentId, status }] }` (1–200, each student once). Today or up to 30 days back (else 400); a student not in the class → 422; students left out keep what they had |
+
+### 6.14 Notice board
+
+Events, activities, trainings, policies and updates, emergency contacts and announcements (`category`), for `everyone`, `staff` or `families` (`audience`), optionally pinned. A null `schoolId` is a Platform Admin's notice for every school.
+
+| Method & path | Who | Success |
+|---|---|---|
+| `GET /api/v1/notices?category&schoolId&page&limit` | Every role | `200 { "notices": [...], "pagination" }`, pinned first, then newest. Staff read their school's and every school's notices for `everyone`/`staff`; parents and students for `everyone`/`families`; admins all of theirs; psychologists every school's staff notices; `canManage` says whether the caller may change one. `schoolId` filter: Platform Admins only (403) |
+| `POST /api/v1/notices` | School Admin (own school), Platform Admin (`schoolId`, or none for every school) | `201 { "notice" }`; an emergency contact needs a `phone` (400); unknown school → 422 |
+| `PATCH` / `DELETE /api/v1/notices/:noticeId` | School Admin (own school's), Platform Admin (any) | `200 { "notice" }` / `204`; a notice the caller cannot manage → 404 |
+
+### 6.15 Staff reviews and the wall of fame
+
+Staff reviews are private to the School Admin and the teacher; the wall shows honours, never ratings.
+
+| Method & path | Who | Success |
+|---|---|---|
+| `GET /api/v1/staff-reviews?month&staffId&page&limit` | School Admin (their school), Teacher (their own; asking for someone else → 403) | `200 { "reviews": [{ id, staff, month, ratings: { teaching, engagement, punctuality, teamwork, communication }, average, comment, reviewedBy, createdAt, updatedAt }], "pagination" }` |
+| `PUT /api/v1/staff-reviews/:staffId/:month` | School Admin | `200 { "review" }` — five ratings 1–5 and an optional comment; writing a month again replaces it; a future month → 400; not a teacher of the school → 404 |
+| `DELETE /api/v1/staff-reviews/:staffId/:month` | School Admin | `204`, or 404 |
+| `GET /api/v1/honours?month&kind&schoolId&page&limit` | Student, Parent, Teacher, School Admin, Platform Admin | `200 { "honours": [{ id, kind, month, honoree: { id, fullName, role, className }, citation, awardedBy, createdAt }], "pagination" }` — staff see their school's wall; a parent the Staff of the Month and their own children's honours; a student the Staff of the Month and their own; Platform Admins every school. Psychologists → 403 |
+| `POST /api/v1/honours` | School Admin | `201 { "honour" }` — `staff_of_month` names a teacher, `student_of_month` a student, of the school (else 422); the same person twice for a month → 409; a future month → 400 |
+| `DELETE /api/v1/honours/:honourId` | School Admin (own school) | `204`, or 404 |
+
+### 6.16 Imports and removals
+
+`POST /api/v1/imports/people` (School Admin into their school, Platform Admin into the `schoolId` they name): `{ role: "student" | "teacher" | "parent", schoolId?, dryRun = true, rows: [...] }`, 1–500 rows, body up to 1 MiB. Students: `fullName, studentId, pin, className?, parentEmail?`; teachers: `fullName, email, password, classNames?`; parents: `fullName, email, password, childStudentIds?`. Every row is checked with the rules of an account made by hand, plus: nothing twice in the file, nothing already taken, links only to people at the school (a parent by email, children by student ID and without a parent). The answer is `200 { "report": { role, dryRun, isValid, created, newClasses, rows: [{ row, fullName, identifier, problems }] } }`. Only when every row is fine and `dryRun` is false is anything written: the new classes, the accounts, their class places and parent links, in one transaction.
+
+| Method & path | Who | Success |
+|---|---|---|
+| `DELETE /api/v1/users/:userId` | Platform Admin, School Admin (own school's students, teachers, parents) | `204` — the account goes with its class place, parent link, health profile and sessions. An account other records point at (observations, activities, attendance, reviews, honours…) is kept → 409 `HAS_RECORDS`: deactivate it instead. Self → 403 |
+| `DELETE /api/v1/classes/:classId` | School Admin | `204` — its teachers are unassigned and its students left in no class, records untouched |
+| `DELETE /api/v1/schools/:schoolId` | Platform Admin | `204` for a school with no accounts and no classes (its notices go with it); otherwise 409 `HAS_RECORDS` |
+
 ## 7. Security measures
 
 - **No plain-text secrets.** argon2id hashes only; Zod response schemas strip any field not declared.
@@ -503,7 +555,7 @@ Students (themselves), Parents (own children), Teachers (their classes' students
 | `npm run db:migrate:dev` | `prisma migrate dev` — create a new migration after editing `schema.prisma` (development) |
 | `npm run db:migrate:status` | Show applied / pending migrations |
 | `npm run db:seed-dev` | Insert the two demo schools |
-| `npm run db:seed-demo` | Development only: a full demo (two schools, every role, classes, activities, concerns at every stage of review, stars from teachers and parents, completions) through the real API. The same people as the frontend's offline mock; adults sign in with `EvolvIQ-Demo-2026`, students (`RV-1001`…) with PIN `246810`. Does nothing if it has already run. |
+| `npm run db:seed-demo` | Development only: a full demo (two schools, every role, classes, activities, concerns at every stage of review, stars from teachers and parents, completions; since 29 Oct 2026 also care needs, a month of attendance, notices, staff reviews and the wall of fame) through the real API. The same people as the frontend's offline mock; adults sign in with `EvolvIQ-Demo-2026`, students (`RV-1001`…) with PIN `246810`. On a database it already seeded, it adds only what is missing, so running it again brings an older demo up to date and never doubles anything. |
 | `npm run bootstrap:admin` | Create the first Platform Admin from `BOOTSTRAP_ADMIN_*` (idempotent) |
 | `npm test` / `test:unit` / `test:integration` | Vitest (integration needs `TEST_DATABASE_URL`) |
 | `npm run test:postman` | Run the Postman collection with Newman against `{{baseUrl}}` (Newman is fetched on demand with `npx`, not installed with the project) |
@@ -601,7 +653,7 @@ npm run test:postman -- --env-var baseUrl=http://localhost:3000 --env-var run=$R
 
 ## 12. Test coverage
 
-**644 tests: 224 unit (Vitest) + 420 API integration (Vitest + Supertest, real PostgreSQL).** Tests are colocated with the code they cover (`<name>.test.ts`). Tests of `*.routes.ts` / `*.repository.ts` files (`*.routes*.test.ts`, `*.repository*.test.ts`) and of the database client (`shared/db/*.test.ts`) form the integration project; everything else is unit. All 63 tests of the previous JavaScript suite were ported case-for-case.
+**769 tests: 282 unit (Vitest) + 487 API integration (Vitest + Supertest, real PostgreSQL).** Tests are colocated with the code they cover (`<name>.test.ts`). Tests of `*.routes.ts` / `*.repository.ts` files (`*.routes*.test.ts`, `*.repository*.test.ts`) and of the database client (`shared/db/*.test.ts`) form the integration project; everything else is unit. All 63 tests of the previous JavaScript suite were ported case-for-case.
 
 | File | Cases |
 |---|---|
@@ -630,6 +682,13 @@ npm run test:postman -- --env-var baseUrl=http://localhost:3000 --env-var run=$R
 | `shared/rbac/route-access.test.ts` (7) | Startup check: guarded and public routes boot; undeclared, authenticate-only, or public+guard routes fail startup; non-`/api` routes ignored |
 | `shared/errors/error-handler.test.ts` (10) | AppError → status/body, Zod issues → field paths, unknown keys, Prisma P2002 → 409 / P2025 → 404 / others → 500, no leaked internals, raw-query constraint extraction |
 | `shared/openapi/register-api-docs.test.ts` (11) | `/docs` served; OpenAPI 3.1 with bearer scheme; auth endpoints still documented; each school endpoint has security, Platform Admin note, tags and its error responses; list query params incl. enums; `schoolId` path param and request bodies; logout (all roles, 204); user endpoints; EVERY API operation declares bearer auth + allowed roles; `/family/*` is Parent-only; every workflow endpoint and schema documented |
+| `modules/health/health.routes.test.ts` (8) | Empty until recorded; the parent writes, teacher / counsellor / school admin read; a write replaces the whole profile; teachers, counsellors and students cannot write, students cannot read; other families and schools → 404; 8 invalid bodies; a class's recorded profiles for its teacher and admin only |
+| `modules/attendance/attendance.routes.test.ts` (10) | Fixed clock (IST). Taking today's register; the month so far counts present / late / absent; corrections by the school admin; an earlier month on its own; families and counsellors → 403, other schools and other classes → 404; no future days, 30 days back; students outside the class → 422, duplicates → 400; at most 62 days, never the future |
+| `modules/notices/notices.routes.test.ts` (7) | Each audience sees its notices (teacher, parent, student, other school, psychologist); platform notices for every school, read but not managed by school admins; a platform notice for one school; an emergency contact needs a phone; only admins post, a school admin only for their school; edit, pin, clear a field, take down; category filter, school filter for the platform only |
+| `modules/staff/staff-reviews.routes.test.ts` (5) | Rate a month, a second rating replaces it, average to one decimal; teachers read only their own; only the school admin writes, about their own school's teachers; ratings 1–5 on all five, no future or malformed month; take a review back |
+| `modules/honours/honours.routes.test.ts` (7) | Name a Staff and Students of the Month (class shown); doubles → 409, wrong role / other school → 422, future → 400, non-admins → 403; staff see the whole wall, a family only the Staff of the Month and their own child, other schools nothing, the platform every wall, counsellors → 403; filters and order; take an honour down |
+| `modules/imports/imports.routes.test.ts` (9) | A dry run reports every row and creates nothing; one bad row stops the whole import; students with existing (any case) and new classes and parent links, signing in with their PIN; teachers with their classes; parents linked to free children, every problem reported; emails in use; school admins only into their school, platform admins name an existing school; 1–500 rows of known columns |
+| `modules/users/users.routes.remove.test.ts` (7) | An account with no records goes with its class place, parent link and health profile; a teacher too; one with records → 409 `HAS_RECORDS`, nothing half-removed; no self-removal, school scope; platform admin in any school; a class goes and its students stay; only an empty school goes |
 | `config.test.ts` (9) | Refresh-secret rules (ported); `JWT_ACCESS_SECRET` used; legacy `JWT_SECRET` accepted with a warning; both set → new one wins; neither → startup fails |
 
 Mutation check: deliberately removing the guard from either route (the app now refuses to start), removing the public marker from login, making the guard allow every role, dropping LIKE escaping, ignoring `is_active` in authentication, sorting by the wrong column, an off-by-one in pagination, or removing the 404 each made the suite fail.

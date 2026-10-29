@@ -40,6 +40,12 @@ export async function registerApiDocs(app: FastifyInstance): Promise<void> {
         { name: 'Assignments', description: 'Assigning activities and completing them (Assign → Do).' },
         { name: 'Progress', description: 'Growth areas, streaks and monthly summaries — parent-safe for every audience.' },
         { name: 'Family', description: 'Parent-facing endpoints. Responses contain only what parents may see.' },
+        { name: 'Health', description: 'A student’s health and care needs — written by the family or the School Admin, read by school staff.' },
+        { name: 'Attendance', description: 'Class registers: present, late or absent, one per student per day.' },
+        { name: 'Notices', description: 'The notice board: events, activities, trainings, policy updates and emergency contacts.' },
+        { name: 'Staff reviews', description: 'A School Admin’s monthly ratings of each teacher. Private to the admin and the teacher.' },
+        { name: 'Honours', description: 'The celebration wall: Staff of the Month and Student of the Month.' },
+        { name: 'Imports', description: 'Students, teachers and parents from a spreadsheet, checked row by row.' },
       ],
       components: {
         securitySchemes: {

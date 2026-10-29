@@ -114,7 +114,12 @@ export function createClassesService(deps: { repository: ClassesRepository }) {
     if (!isRemoved) throw Errors.notFound('Class student');
   }
 
-  return { create, rename, list, getDetail, addTeacher, removeTeacher, addStudent, removeStudent };
+  // The students stay at the school, waiting for a class; their records are untouched.
+  async function remove(actor: Actor, classId: string): Promise<void> {
+    if (!(await repository.remove(classId, adminSchoolOf(actor)))) throw Errors.notFound('Class');
+  }
+
+  return { create, rename, list, getDetail, addTeacher, removeTeacher, addStudent, removeStudent, remove };
 }
 
 export type ClassesService = ReturnType<typeof createClassesService>;

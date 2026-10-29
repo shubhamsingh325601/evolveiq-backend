@@ -19,7 +19,7 @@ let repo: { [K in keyof SchoolsRepository]: ReturnType<typeof vi.fn> };
 let service: ReturnType<typeof createSchoolsService>;
 
 beforeEach(() => {
-  repo = { create: vi.fn(), findById: vi.fn(), rename: vi.fn(), list: vi.fn() };
+  repo = { create: vi.fn(), findById: vi.fn(), rename: vi.fn(), remove: vi.fn(), list: vi.fn() };
   service = createSchoolsService({ repository: repo as unknown as SchoolsRepository });
 });
 

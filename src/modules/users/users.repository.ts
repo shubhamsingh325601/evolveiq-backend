@@ -1,7 +1,7 @@
 // All database access for user management (Prisma Client). No business rules here.
 import type { Prisma } from '../../generated/prisma/client.js';
 import type { Db } from '../../shared/db/prisma.js';
-import { isPrismaKnownError } from '../../shared/errors/index.js';
+import { constraintViolation, isPrismaKnownError } from '../../shared/errors/index.js';
 import { escapeLike, type SortOrder } from '../../shared/pagination/index.js';
 import type { Role } from '../../shared/rbac/index.js';
 import type { UserSortField } from './users.schemas.js';
@@ -83,6 +83,28 @@ export function createUsersRepository(db: Db) {
         return user;
       } catch (err) {
         if (isPrismaKnownError(err, 'P2025')) return null; // record to update not found
+        throw err;
+      }
+    },
+
+    /**
+     * Removes an account with the rows that only describe it: its class place, its parent
+     * link, its health profile and its sessions. Anything that records what happened
+     * (observations, activities, attendance, reviews…) points at the account with ON DELETE
+     * RESTRICT, so such an account stays and this answers 'has_records'.
+     */
+    async remove(id: string): Promise<'removed' | 'missing' | 'has_records'> {
+      try {
+        await db.$transaction(async (tx) => {
+          await tx.classStudent.deleteMany({ where: { studentId: id } });
+          await tx.classTeacher.deleteMany({ where: { teacherId: id } });
+          await tx.parentStudent.deleteMany({ where: { OR: [{ studentId: id }, { parentId: id }] } });
+          await tx.user.delete({ where: { id } });
+        });
+        return 'removed';
+      } catch (err) {
+        if (isPrismaKnownError(err, 'P2025')) return 'missing';
+        if (constraintViolation(err)?.kind === 'foreign_key' || isPrismaKnownError(err, 'P2014')) return 'has_records';
         throw err;
       }
     },

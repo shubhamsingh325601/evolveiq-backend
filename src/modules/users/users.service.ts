@@ -134,7 +134,21 @@ export function createUsersService(deps: { repository: UsersRepository }) {
     return toDto(user);
   }
 
-  return { list, getById, update, deactivate, reactivate };
+  // Only an account with no history can go: a mistake, or someone added and never used.
+  // Anyone with records is switched off instead, so the school keeps what happened.
+  async function remove(actor: Actor, id: string): Promise<void> {
+    if (id === actor.userId) throw Errors.forbidden('You cannot remove your own account.');
+    await findManaged(actor, id);
+    const result = await repository.remove(id);
+    if (result === 'missing') throw Errors.notFound('User');
+    if (result === 'has_records') {
+      throw Errors.hasRecords(
+        'This account has records at school, so it cannot be removed. Switch it off instead: they can no longer sign in, and the records are kept.',
+      );
+    }
+  }
+
+  return { list, getById, update, deactivate, reactivate, remove };
 }
 
 export type UsersService = ReturnType<typeof createUsersService>;

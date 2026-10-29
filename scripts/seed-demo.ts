@@ -4,13 +4,17 @@
 // the frontend's offline mock, so the frontend's demo accounts work against the real API too.
 //
 // Everything except the first Platform Admin goes through the real API in-process
-// (app.inject), so every validation and business rule applies. Refuses to run in production,
-// and does nothing if the demo school already exists.
+// (app.inject), so every validation and business rule applies. Refuses to run in production.
+// If the demo school already exists, the people and stories are left alone and only what came
+// later is added where it is still missing (client feedback, 29 Oct 2026: health and care
+// needs, a month of attendance, notices, staff reviews and the celebration wall), so a demo
+// database seeded before then can be brought up to date by running it again.
 //
 //   npm run db:seed-demo
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { hashSecret } from '../src/modules/auth/password.js';
+import { businessDate, businessMonth } from '../src/modules/progress/business-time.js';
 import { createPrismaClient } from '../src/shared/db/prisma.js';
 
 /** Every demo adult signs in with this password; every demo student with DEMO_PIN. */
@@ -56,10 +60,11 @@ async function register(token: string, body: Record<string, unknown>): Promise<s
 try {
   const existing = await db.school.findFirst({ where: { name: DEMO_SCHOOL }, select: { id: true } });
   if (existing) {
-    console.log(`"${DEMO_SCHOOL}" already exists, so the demo data is already in. Nothing to do.`);
+    console.log(`"${DEMO_SCHOOL}" already exists, so its people and stories are in. Adding only what is missing.`);
   } else {
     await seed();
   }
+  await seedLaterAdditions();
 } finally {
   await app.close();
   await db.$disconnect();
@@ -289,4 +294,207 @@ async function seed(): Promise<void> {
     { role: 'Student', signIn: 'RV-1002 (Arjun)' },
   ]);
   console.log(`Adults use the password ${DEMO_PASSWORD}; students use the PIN ${DEMO_PIN}.`);
+}
+
+// ───────────────────────────── Added later (client feedback, 29 Oct 2026) ─────────────────────────────
+// Each part runs only when its table holds nothing for the demo school yet, so running the seed
+// again never doubles anything. (Function declarations, not consts: the code at the top of the
+// file runs before anything declared down here with const is initialised.)
+
+function addDays(day: string, days: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+function previousMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  return new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
+}
+
+/** A stable number in [0, 1) for a piece of text, so the demo register is the same every time. */
+function unit(text: string): number {
+  let hash = 2166136261; // FNV-1a, then a finaliser so near-identical texts land far apart
+  for (const char of text) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b);
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+  return ((hash ^ (hash >>> 16)) >>> 0) / 2 ** 32;
+}
+
+async function seedLaterAdditions(): Promise<void> {
+  const ridgeview = await db.school.findFirst({ where: { name: DEMO_SCHOOL }, select: { id: true } });
+  const halden = await db.school.findFirst({ where: { name: 'Halden Grove School' }, select: { id: true } });
+  if (!ridgeview) return;
+
+  const idOf = async (where: { email: string } | { studentLoginId: string }) =>
+    (await db.user.findFirstOrThrow({ where, select: { id: true } })).id;
+  const today = businessDate(new Date());
+  const thisMonth = businessMonth(new Date());
+  const lastMonth = previousMonth(thisMonth);
+
+  const clara = await login({ email: 'clara@school.test' });
+  const platform = await login({ email: PLATFORM_ADMIN.email });
+  const added: string[] = [];
+
+  // ---------- Health and care needs: what each family (or the school office) told the school ----------
+  const ridgeviewStudents = { student: { schoolId: ridgeview.id } };
+  if ((await db.healthProfile.count({ where: ridgeviewStudents })) === 0) {
+    const priya = await login({ email: 'priya@family.test' });
+    const neil = await login({ email: 'neil@family.test' });
+    const record = (token: string, studentId: string, body: Record<string, unknown>) => call('PUT', `/students/${studentId}/health`, token, body);
+    await record(priya, await idOf({ studentLoginId: 'RV-1001' }), {
+      conditions: ['asthma', 'on_medication'],
+      bloodGroup: 'B+',
+      allergies: 'Dust and pollen',
+      medications: 'Blue reliever inhaler before PE and when wheezy. It is in the front pocket of her bag.',
+      careNotes: 'If she is wheezy, let her use her inhaler and sit out. Please call me if it has not settled within ten minutes.',
+      emergencyContact: { name: 'Priya Ahluwalia', relation: 'Mother', phone: '+91 98765 43210' },
+    });
+    await record(priya, await idOf({ studentLoginId: 'RV-1002' }), {
+      conditions: ['severe_allergy'],
+      bloodGroup: 'B+',
+      allergies: 'Peanuts and tree nuts (anaphylaxis)',
+      medications: 'Adrenaline auto-injector, kept in the school office.',
+      careNotes: 'No food sharing. If he has swelling or trouble breathing, use the auto-injector and call an ambulance (108), then me.',
+      emergencyContact: { name: 'Priya Ahluwalia', relation: 'Mother', phone: '+91 98765 43210' },
+    });
+    await record(neil, await idOf({ studentLoginId: 'RV-1003' }), {
+      conditions: ['adhd'],
+      careNotes: 'Short tasks with a movement break between them work best. A two-minute warning before a change of activity helps him a lot.',
+      emergencyContact: { name: 'Neil D’Souza', relation: 'Father', phone: '+91 98765 43211' },
+    });
+    await record(clara, await idOf({ studentLoginId: 'RV-1005' }), {
+      conditions: ['visual_impairment'],
+      careNotes: 'Wears glasses for distance. Seat her near the board and print worksheets in a larger font.',
+    });
+    await record(clara, await idOf({ studentLoginId: 'RV-1006' }), {
+      conditions: ['dyslexia'],
+      careNotes: 'Give instructions one step at a time, and read written instructions aloud. Extra time in written tests.',
+    });
+    await record(clara, await idOf({ studentLoginId: 'RV-1007' }), {
+      conditions: ['diabetes', 'on_medication'],
+      bloodGroup: 'A+',
+      medications: 'Insulin before lunch, given by the school nurse.',
+      careNotes: 'Checks her blood sugar before lunch and PE. Glucose tablets are in the class first-aid box: give two if she feels shaky or dizzy.',
+    });
+    added.push('health and care needs for six Ridgeview students');
+  }
+
+  // ---------- Attendance: the last 30 days, Monday to Saturday, taken by each class's teacher ----------
+  if ((await db.attendanceRecord.count({ where: ridgeviewStudents })) === 0) {
+    const teacherTokens = new Map<string, string>();
+    const tokenFor = async (email: string) => {
+      if (!teacherTokens.has(email)) teacherTokens.set(email, await login({ email }));
+      return teacherTokens.get(email)!;
+    };
+    // How often each child is in, so the register reads like a real one (Devan's is the one to watch).
+    const usualRate: Record<string, number> = {
+      'RV-1001': 0.88, 'RV-1002': 0.96, 'RV-1003': 0.72, 'RV-1004': 0.92, 'RV-1005': 0.9, 'RV-1006': 0.84, 'RV-1007': 0.94,
+      'HG-2001': 0.9, 'HG-2002': 0.86,
+    };
+    const registers = [
+      { schoolId: ridgeview.id, name: '4B', teacher: 'rao@school.test' },
+      { schoolId: ridgeview.id, name: '3A', teacher: 'rao@school.test' },
+      { schoolId: ridgeview.id, name: '5C', teacher: 'ritu@school.test' },
+      ...(halden ? [{ schoolId: halden.id, name: '6A', teacher: 'omar@halden.test' }] : []),
+    ];
+    for (const register of registers) {
+      const group = await db.class.findFirst({
+        where: { schoolId: register.schoolId, name: register.name },
+        select: { id: true, students: { select: { student: { select: { id: true, studentLoginId: true } } } } },
+      });
+      if (!group || group.students.length === 0) continue;
+      const token = await tokenFor(register.teacher);
+      for (let back = 29; back >= 0; back -= 1) {
+        const day = addDays(today, -back);
+        if (new Date(`${day}T00:00:00Z`).getUTCDay() === 0) continue; // Sunday
+        const records = group.students.map(({ student }) => {
+          const roll = unit(`${student.studentLoginId}:${day}`);
+          const rate = usualRate[student.studentLoginId ?? ''] ?? 0.9;
+          return { studentId: student.id, status: roll >= rate ? 'absent' : roll < 0.06 ? 'late' : 'present' };
+        });
+        await call('PUT', `/classes/${group.id}/attendance/${day}`, token, { records });
+      }
+    }
+    added.push('a month of attendance for every class');
+  }
+
+  // ---------- The notice board ----------
+  const anyNotice = await db.notice.count({ where: { OR: [{ schoolId: ridgeview.id }, { schoolId: null }] } });
+  if (anyNotice === 0) {
+    const post = (token: string, body: Record<string, unknown>) => call('POST', '/notices', token, body);
+    await post(clara, {
+      category: 'event', title: 'Annual Sports Day', startsOn: addDays(today, 10), location: 'Main ground', isPinned: true,
+      body: 'Races, relays and a tug of war for every class. Families are welcome from 9:00. Please send your child in their house colours with a water bottle.',
+    });
+    await post(clara, {
+      category: 'activity', title: 'Inter-house science fair', startsOn: addDays(today, 20), location: 'Hall B',
+      body: 'Projects in pairs, on anything that makes you curious. Sign up with your class teacher by Friday.',
+    });
+    await post(clara, {
+      category: 'event', title: 'Parent–teacher meeting', startsOn: addDays(today, 14), location: 'Classrooms', audience: 'families',
+      body: 'Fifteen-minute conversations with your child’s class teacher. Book a slot through the school office.',
+    });
+    await post(clara, {
+      category: 'training', title: 'First aid and CPR training', startsOn: addDays(today, 6), location: 'Staff room', audience: 'staff',
+      body: 'A three-hour session with a certified trainer, for every class teacher. Bring the class first-aid box so we can restock it.',
+    });
+    await post(platform, {
+      category: 'policy', title: 'Fire-safety drills: what changes this term',
+      body: 'Every school runs two fire drills a term, marks its assembly points, and names a fire warden for each class. Your school will share its dates on this board.',
+    });
+    await post(platform, {
+      category: 'policy', title: 'Safeguarding refresher for every staff member', audience: 'staff',
+      body: 'Please complete the yearly safeguarding refresher this term. It covers spotting concerns, recording them and who to tell.',
+    });
+    for (const [title, phone, body] of [
+      ['National emergency number', '112', 'Police, fire and ambulance, from any phone.'],
+      ['Ambulance', '108', 'Free emergency ambulance.'],
+      ['Childline', '1098', 'Free, 24-hour help for children and for adults worried about a child.'],
+    ] as const) {
+      await post(platform, { category: 'emergency_contact', title, phone, body });
+    }
+    added.push('notices: events, an activity, a training, policy updates and emergency numbers');
+  }
+
+  // ---------- Staff reviews and the celebration wall ----------
+  const rao = await idOf({ email: 'rao@school.test' });
+  const kapoor = await idOf({ email: 'ritu@school.test' });
+  if ((await db.staffReview.count({ where: { schoolId: ridgeview.id } })) === 0) {
+    const review = (staffId: string, month: string, body: Record<string, unknown>) => call('PUT', `/staff-reviews/${staffId}/${month}`, clara, body);
+    await review(rao, lastMonth, {
+      teaching: 5, engagement: 5, punctuality: 4, teamwork: 5, communication: 5,
+      comment: 'Started the reading-buddies scheme and kept every family in the loop.',
+    });
+    await review(kapoor, lastMonth, {
+      teaching: 4, engagement: 4, punctuality: 5, teamwork: 4, communication: 3,
+      comment: 'Well-run lessons. Let us find a way to share more with parents each week.',
+    });
+    await review(rao, thisMonth, { teaching: 5, engagement: 4, punctuality: 5, teamwork: 5, communication: 4 });
+    await review(kapoor, thisMonth, {
+      teaching: 4, engagement: 5, punctuality: 5, teamwork: 4, communication: 4,
+      comment: 'The new art corner has every child in 5C talking about their work.',
+    });
+    added.push('staff reviews for this month and last');
+  }
+  if ((await db.honour.count({ where: { schoolId: ridgeview.id } })) === 0) {
+    const honour = (body: Record<string, unknown>) => call('POST', '/honours', clara, body);
+    await honour({
+      kind: 'staff_of_month', month: lastMonth, honoreeId: rao,
+      citation: 'For the reading-buddies scheme: every Year 3 reader now has a Year 4 buddy, and every family heard how it went.',
+    });
+    await honour({
+      kind: 'student_of_month', month: lastMonth, honoreeId: await idOf({ studentLoginId: 'RV-1005' }),
+      citation: 'For kindness: Noor noticed a classmate sitting alone at lunch and made her feel at home.',
+    });
+    await honour({
+      kind: 'staff_of_month', month: thisMonth, honoreeId: kapoor,
+      citation: 'For the new art corner, where every pupil in 5C now has a piece on the wall.',
+    });
+    await honour({
+      kind: 'student_of_month', month: thisMonth, honoreeId: await idOf({ studentLoginId: 'RV-1002' }),
+      citation: 'For telling the class about the museum trip with a clear beginning, middle and end, and answering every question.',
+    });
+    added.push('Staff and Students of the Month for this month and last');
+  }
+
+  console.log(added.length > 0 ? `Added: ${added.join('; ')}.` : 'Everything added since 29 Oct 2026 is already in.');
 }

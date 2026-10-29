@@ -47,6 +47,9 @@ model School {
   users        User[]
   classes      Class[]
   observations Observation[]
+  notices      Notice[]
+  staffReviews StaffReview[]
+  honours      Honour[]
 
   @@index([name], map: "schools_name_idx")
   @@index([createdAt], map: "schools_created_at_idx")
@@ -96,6 +99,15 @@ model User {
   supportPlans         SupportPlan[]       @relation("SupportStudent")
   supportPlansWritten  SupportPlan[]       @relation("SupportAuthor")
   notificationState    NotificationState?
+  healthProfile        HealthProfile?      @relation("HealthStudent")
+  healthProfilesEdited HealthProfile[]     @relation("HealthEditor")
+  attendance           AttendanceRecord[]  @relation("AttendanceStudent")
+  attendanceMarked     AttendanceRecord[]  @relation("AttendanceMarker")
+  noticesPosted        Notice[]
+  staffReviews         StaffReview[]       @relation("StaffReviewed")
+  staffReviewsWritten  StaffReview[]       @relation("StaffReviewer")
+  honours              Honour[]            @relation("Honoree")
+  honoursAwarded       Honour[]            @relation("HonourAwarder")
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -501,4 +513,171 @@ model NotificationState {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("notification_states")
+}
+
+// ───────────────────────────── Client feedback, 29 Oct 2026 ─────────────────────────────
+
+/// What the school should know to take care of a student. Labels: src/modules/health/health.schemas.ts.
+enum HealthCondition {
+  diabetes
+  asthma
+  epilepsy
+  severe_allergy
+  on_medication
+  specially_abled
+  visual_impairment
+  hearing_impairment
+  dyslexia
+  adhd
+  autism
+  speech_language
+  other
+
+  @@map("health_condition")
+}
+
+/// One per student, written by their parent or the School Admin, read by the school staff who
+/// teach or support them. Not a clinical record: it is what the family tells the school.
+model HealthProfile {
+  studentId         String            @id @map("student_id") @db.Uuid
+  conditions        HealthCondition[] @default([])
+  /// A+ A- B+ B- AB+ AB- O+ O- (CHECK in the migration).
+  bloodGroup        String?           @map("blood_group")
+  allergies         String?
+  medications       String?
+  careNotes         String?           @map("care_notes")
+  /// Name and phone together, or neither (CHECK in the migration).
+  emergencyName     String?           @map("emergency_name")
+  emergencyRelation String?           @map("emergency_relation")
+  emergencyPhone    String?           @map("emergency_phone")
+  updatedById       String?           @map("updated_by_id") @db.Uuid
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  student   User  @relation("HealthStudent", fields: [studentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  updatedBy User? @relation("HealthEditor", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@map("health_profiles")
+}
+
+enum AttendanceStatus {
+  present
+  late
+  absent
+
+  @@map("attendance_status")
+}
+
+/// One per student per Asia/Kolkata day.
+model AttendanceRecord {
+  studentId  String           @map("student_id") @db.Uuid
+  day        DateTime         @db.Date
+  status     AttendanceStatus
+  markedById String           @map("marked_by_id") @db.Uuid
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  student  User @relation("AttendanceStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  markedBy User @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([studentId, day])
+  @@index([day], map: "attendance_records_day_idx")
+  @@map("attendance_records")
+}
+
+enum NoticeCategory {
+  event
+  activity
+  training
+  policy
+  emergency_contact
+  general
+
+  @@map("notice_category")
+}
+
+enum NoticeAudience {
+  everyone
+  staff
+  families
+
+  @@map("notice_audience")
+}
+
+/// The notice board. A NULL school is a Platform Admin's notice for every school.
+model Notice {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String?        @map("school_id") @db.Uuid
+  category    NoticeCategory
+  title       String
+  body        String?
+  startsOn    DateTime?      @map("starts_on") @db.Date
+  location    String?
+  /// Required for an emergency contact (CHECK in the migration).
+  phone       String?
+  audience    NoticeAudience @default(everyone)
+  isPinned    Boolean        @default(false) @map("is_pinned")
+  createdById String         @map("created_by_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school    School? @relation(fields: [schoolId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([schoolId, createdAt], map: "notices_school_id_created_at_idx")
+  @@map("notices")
+}
+
+/// A School Admin's ratings (1-5) of one teacher for one month.
+model StaffReview {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId      String   @map("school_id") @db.Uuid
+  staffId       String   @map("staff_id") @db.Uuid
+  reviewerId    String   @map("reviewer_id") @db.Uuid
+  /// First day of the month.
+  month         DateTime @db.Date
+  teaching      Int      @db.SmallInt
+  engagement    Int      @db.SmallInt
+  punctuality   Int      @db.SmallInt
+  teamwork      Int      @db.SmallInt
+  communication Int      @db.SmallInt
+  comment       String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  staff    User   @relation("StaffReviewed", fields: [staffId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  reviewer User   @relation("StaffReviewer", fields: [reviewerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([staffId, month], map: "staff_reviews_staff_id_month_key")
+  @@index([schoolId, month], map: "staff_reviews_school_id_month_idx")
+  @@map("staff_reviews")
+}
+
+enum HonourKind {
+  staff_of_month
+  student_of_month
+
+  @@map("honour_kind")
+}
+
+/// The celebration wall: Staff of the Month and Student of the Month.
+model Honour {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String     @map("school_id") @db.Uuid
+  kind        HonourKind
+  /// First day of the month.
+  month       DateTime   @db.Date
+  honoreeId   String     @map("honoree_id") @db.Uuid
+  citation    String
+  awardedById String     @map("awarded_by_id") @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  honoree   User   @relation("Honoree", fields: [honoreeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  awardedBy User   @relation("HonourAwarder", fields: [awardedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([kind, month, honoreeId], map: "honours_kind_month_honoree_id_key")
+  @@index([schoolId, month], map: "honours_school_id_month_idx")
+  @@map("honours")
 }

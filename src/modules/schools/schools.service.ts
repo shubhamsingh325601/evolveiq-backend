@@ -59,7 +59,17 @@ export function createSchoolsService(deps: { repository: SchoolsRepository }) {
     return toDto(school);
   }
 
-  return { create, list, getById, rename };
+  // Only an empty school can go (no accounts, no classes): one added by mistake, or never used.
+  // Its notices go with it.
+  async function remove(id: string): Promise<void> {
+    const result = await repository.remove(id);
+    if (result === 'missing') throw Errors.notFound('School');
+    if (result === 'not_empty') {
+      throw Errors.hasRecords('This school still has accounts or classes. Remove or move them first.');
+    }
+  }
+
+  return { create, list, getById, rename, remove };
 }
 
 export type SchoolsService = ReturnType<typeof createSchoolsService>;

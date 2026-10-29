@@ -95,6 +95,24 @@ const classesRoutes: FastifyPluginAsyncZod<ClassesRoutesOptions> = async (app, {
     handler: async (request) => ({ class: await service.rename(actorOf(request), request.params.classId, request.body) }),
   });
 
+  // DELETE /api/v1/classes/:classId — delete a class
+  app.delete('/:classId', {
+    ...adminOnly,
+    schema: {
+      ...docs,
+      summary: 'Delete a class',
+      description:
+        `${adminNote} Its teachers are unassigned and its students left without a class (they stay at the school ` +
+        'and keep every record). Another school’s class → 404.',
+      params: ClassIdParamsSchema,
+      response: { 204: NO_CONTENT, ...errorResponses(400, 401, 403, 404, 500) },
+    },
+    handler: async (request, reply) => {
+      await service.remove(actorOf(request), request.params.classId);
+      return reply.code(204).send(null);
+    },
+  });
+
   // PUT / DELETE /api/v1/classes/:classId/teachers/:teacherId — assign / unassign a teacher
   app.put('/:classId/teachers/:teacherId', {
     ...adminOnly,

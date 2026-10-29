@@ -40,7 +40,7 @@ let service: ReturnType<typeof createUsersService>;
 beforeEach(() => {
   repo = {
     findById: vi.fn(), list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-    deactivate: vi.fn(), reactivate: vi.fn(), update: vi.fn(),
+    deactivate: vi.fn(), reactivate: vi.fn(), update: vi.fn(), remove: vi.fn(),
   };
   service = createUsersService({ repository: repo as unknown as UsersRepository });
 });

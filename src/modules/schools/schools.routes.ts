@@ -3,6 +3,7 @@
 // Create and rename: Platform Admin. List: Platform Admin and Psychologist. View: every role,
 // limited by the service to the caller's own school (Platform Admin and Psychologist: any).
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import type { Db } from '../../shared/db/prisma.js';
 import { errorResponses } from '../../shared/errors/index.js';
 import { actorOf, describeRoles, requireRole, Role } from '../../shared/rbac/index.js';
@@ -94,6 +95,24 @@ const schoolsRoutes: FastifyPluginAsyncZod<SchoolsRoutesOptions> = async (app, {
       response: { 200: SchoolResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
     },
     handler: async (request) => ({ school: await service.rename(request.params.schoolId, request.body) }),
+  });
+
+  // DELETE /api/v1/schools/:schoolId — delete an empty school
+  app.delete('/:schoolId', {
+    ...guarded,
+    schema: {
+      ...docs,
+      summary: 'Delete an empty school',
+      description:
+        `${describeRoles(platformAdminOnly.allowedRoles)} Only a school with no accounts and no classes ` +
+        '(else 409 `HAS_RECORDS`). Its notices go with it.',
+      params: SchoolIdParamsSchema,
+      response: { 204: z.null().meta({ description: 'Deleted. No body.' }), ...errorResponses(400, 401, 403, 404, 409, 500) },
+    },
+    handler: async (request, reply) => {
+      await service.remove(request.params.schoolId);
+      return reply.code(204).send(null);
+    },
   });
 };
 

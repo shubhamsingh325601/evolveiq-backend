@@ -140,6 +140,21 @@ export function createClassesRepository(db: Db) {
       });
       return count > 0;
     },
+
+    /**
+     * Deletes the class if it is in `schoolId`, with its teacher assignments and student places
+     * (the students stay at the school, in no class). Returns whether one was deleted.
+     */
+    async remove(classId: string, schoolId: string): Promise<boolean> {
+      return db.$transaction(async (tx) => {
+        const found = await tx.class.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
+        if (!found) return false;
+        await tx.classTeacher.deleteMany({ where: { classId } });
+        await tx.classStudent.deleteMany({ where: { classId } });
+        await tx.class.delete({ where: { id: classId } });
+        return true;
+      });
+    },
   };
 }
 

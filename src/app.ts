@@ -13,15 +13,21 @@ import {
   familyAssignmentsRoutes,
   studentAssignmentsRoutes,
 } from './modules/activities/activities.routes.js';
+import attendanceRoutes from './modules/attendance/attendance.routes.js';
 import { createAuthRepository } from './modules/auth/auth.repository.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import { createAuthenticate } from './modules/auth/authenticate.js';
 import { initDummyHash } from './modules/auth/password.js';
+import { classHealthRoutes, studentHealthRoutes } from './modules/health/health.routes.js';
+import honoursRoutes from './modules/honours/honours.routes.js';
+import importsRoutes from './modules/imports/imports.routes.js';
+import noticesRoutes from './modules/notices/notices.routes.js';
 import { familyObservationsRoutes, observationsRoutes } from './modules/observations/observations.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import progressRoutes from './modules/progress/progress.routes.js';
 import classesRoutes from './modules/schools/classes.routes.js';
 import schoolsRoutes from './modules/schools/schools.routes.js';
+import staffReviewsRoutes from './modules/staff/staff-reviews.routes.js';
 import parentStudentsRoutes from './modules/users/parent-students.routes.js';
 import { studentSupportRoutes, supportPlansRoutes } from './modules/support/support.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
@@ -91,6 +97,15 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     await app.register(studentSupportRoutes, { prefix: `${prefix}/students`, db, now });
     await app.register(supportPlansRoutes, { prefix: `${prefix}/support-plans`, db, now });
     await app.register(notificationsRoutes, { prefix: `${prefix}/notifications`, db, now });
+    // Client feedback, 29 Oct 2026: health and care, attendance, the notice board, staff
+    // reviews, the celebration wall and spreadsheet imports.
+    await app.register(studentHealthRoutes, { prefix: `${prefix}/students`, db });
+    await app.register(classHealthRoutes, { prefix: `${prefix}/classes`, db });
+    await app.register(attendanceRoutes, { prefix: `${prefix}/classes`, db, now });
+    await app.register(noticesRoutes, { prefix: `${prefix}/notices`, db });
+    await app.register(staffReviewsRoutes, { prefix: `${prefix}/staff-reviews`, db, now });
+    await app.register(honoursRoutes, { prefix: `${prefix}/honours`, db, now });
+    await app.register(importsRoutes, { prefix: `${prefix}/imports`, db });
     // Family app (parents): parent-safe responses only.
     await app.register(familyObservationsRoutes, { prefix: `${prefix}/family/observations`, db });
     await app.register(familyAssignmentsRoutes, { prefix: `${prefix}/family/children`, db });

@@ -27,6 +27,12 @@ src/
     observations/       # Submit, list, filter, review queue
     activities/         # Activity library, authoring, assignment
     progress/           # Student progress, streaks, growth areas, summaries
+    health/             # Health and care needs (client feedback, 29 Oct 2026)
+    attendance/         # Class registers
+    notices/            # The notice board
+    staff/              # Staff reviews
+    honours/            # Staff and Students of the Month
+    imports/            # Students, teachers and parents from a spreadsheet
   each module/
     *.routes.ts        # HTTP layer — request/response, validation
     *.service.ts        # Business logic, workflow rules
@@ -87,6 +93,25 @@ live in services, not routes or controllers-as-routes. Classes live in the
   current month and stored once per finished month in `monthly_summaries`
   (immutable).
 
+- Since the client's feedback of 29 Oct 2026:
+  - `HealthProfile` → one per student (primary key `student_id`): conditions (a
+    Postgres enum array), blood group, allergies, medication, care notes, an
+    emergency contact (name and phone together, or neither). Written by the
+    parent or the School Admin; removed with the student's account.
+  - `AttendanceRecord` → one per student per Asia/Kolkata day (`present`,
+    `late`, `absent`), with who marked it. The register of a class is its
+    current students' records; a class has no attendance of its own, so
+    deleting a class touches none.
+  - `Notice` → category, title, body, date, place, phone, audience, pinned;
+    `school_id` NULL for a Platform Admin's notice for every school.
+  - `StaffReview` → five 1–5 ratings and a comment, one per teacher per month.
+  - `Honour` → Staff of the Month (a teacher) or Student of the Month (a
+    student), with a citation; once per person per kind per month.
+  - Removal: everything that records what happened points at a user with ON
+    DELETE RESTRICT, so `DELETE /users/:id` removes only an account nobody's
+    records point at (with its class place, parent link, health profile and
+    sessions), else 409 `HAS_RECORDS`.
+
 ## Access rules worth encoding explicitly
 - Parents never see clinical scores or psychologist notes.
 - Psychologist notes marked "teacher-only" are excluded from Parent-facing
@@ -111,6 +136,18 @@ live in services, not routes or controllers-as-routes. Classes live in the
 - Teachers and parents see only the observations they wrote. Something good
   anyone wrote reaches the student's circle as a star, never as an
   observation.
+- Classes are reached through one rule too (`src/modules/schools/class-scope.ts`):
+  School Admins every class of their school, Teachers the classes they teach;
+  outside it → "not found". Attendance and a class's health profiles use it.
+- Health and care needs: parents (their children) and School Admins (their
+  school) write; Teachers, Psychologists and School Admins read, through the
+  student scope. Students do not reach them.
+- The notice board answers each role for its audience; a School Admin manages
+  only their own school's notices, a Platform Admin any.
+- Staff reviews: the School Admin of the school, and the teacher reviewed —
+  nobody else. Honours: staff see their school's wall; a parent sees the Staff
+  of the Month and their own children's honours; a student the Staff of the
+  Month and their own. Another family's child never reaches a family.
 - The frontend calls the `psychologist` role the school **Counsellor** (client
   feedback, 21 Oct 2026). The role's value, routes and permissions are
   unchanged.
@@ -125,7 +162,8 @@ boundary.
 ## What's deliberately out of scope for MVP
 No permission editor/audit log, no chat, no guardian hierarchies /
 multi-school students, no billing, no native mobile. CSV import is V1, not
-MVP — don't build the import pipeline yet.
+MVP for the PRD, but the client asked for it on 29 Oct 2026: spreadsheet import
+is built (`/imports/people`); a live sync with a school's own system is not.
 
 ## Environments
 - `local` — Postgres via Docker Compose, Prisma migrate dev

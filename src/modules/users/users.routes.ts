@@ -3,6 +3,7 @@
 // views, edits, deactivates and reactivates them.
 //   Request → authenticate (401) → requireRole(...) (403) → route → service (school scope) → repository
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import type { Db } from '../../shared/db/prisma.js';
 import { errorResponses } from '../../shared/errors/index.js';
 import { actorOf, describeRoles, requireRole, Role } from '../../shared/rbac/index.js';
@@ -96,6 +97,26 @@ const usersRoutes: FastifyPluginAsyncZod<UsersRoutesOptions> = async (app, { db 
       response: { 200: UserResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
     },
     handler: async (request) => ({ user: await service.deactivate(actorOf(request), request.params.userId) }),
+  });
+
+  // DELETE /api/v1/users/:userId — remove an account that has no records
+  app.delete('/:userId', {
+    onRequest: [app.authenticate, userManagers],
+    schema: {
+      ...docs,
+      summary: 'Remove a user',
+      description:
+        `${describeRoles(userManagers.allowedRoles)} ${SCOPE_NOTE} Removes the account with its class place, parent ` +
+        'link, health profile and sessions. An account that anything else points at (observations, activities, ' +
+        'attendance, reviews, honours…) is kept → 409 `HAS_RECORDS`: deactivate it instead. Nobody can remove their ' +
+        'own account (403). Users outside the reach of the caller return 404.',
+      params: UserIdParamsSchema,
+      response: { 204: z.null().meta({ description: 'Removed. No body.' }), ...errorResponses(400, 401, 403, 404, 409, 500) },
+    },
+    handler: async (request, reply) => {
+      await service.remove(actorOf(request), request.params.userId);
+      return reply.code(204).send(null);
+    },
   });
 
   // POST /api/v1/users/:userId/reactivate — reactivate an account

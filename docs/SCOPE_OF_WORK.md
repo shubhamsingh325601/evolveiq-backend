@@ -11,6 +11,19 @@ on the student's profile at once, never reviewed, never Significant and never a
 growth area. Parents can record positive observations too. The frontend calls
 the psychologist the school **Counsellor**.
 
+**Change, 29 Oct 2026 (client feedback):** the school side grows beyond the
+observation workflow. Each student has **health and care needs** (conditions
+such as diabetes, asthma, ADHD or dyslexia, allergies, medication, care notes,
+an emergency contact) written by the family or the School Admin and read by the
+staff who teach them — the family's word, not a clinical record. Teachers take
+**attendance** per class and day. Admins post to a **notice board** (events,
+activities, trainings, policies and updates, emergency contacts). The School
+Admin **rates teachers** monthly and names a **Staff of the Month** and
+**Students of the Month** on a celebration wall; a family sees the Staff of the
+Month and only their own child's honours. School and Platform Admins
+**import** students, teachers and parents from a spreadsheet, and can
+**remove** what has no records: an unused account, a class, an empty school.
+
 ## Core workflow to support end-to-end
 Observe → Review → Assign → Do → See (concerns); Observe → Celebrate (positive
 observations: a star)
@@ -48,8 +61,23 @@ observations: a star)
   name and role (Parent-safe for every audience)
 
 ### School / Platform administration
-- School Admin: manage students, teachers, classes, parents (CRUD)
-- Platform Admin: add schools, manage users across all roles
+- School Admin: manage students, teachers, classes, parents (CRUD; removing an
+  account only while it has no records, else deactivation)
+- Platform Admin: add schools (and remove empty ones), manage users across all roles
+- Import students, teachers or parents (up to 500 rows a request), every row
+  checked and reported; all or nothing
+
+### School life (client feedback, 29 Oct 2026)
+- Health and care needs per student: parents and School Admins write; teachers,
+  psychologists and School Admins read; never in the Holistic Index
+- Class attendance: present / late / absent per student per Asia/Kolkata day,
+  today or up to 30 days back; read over a range for a class
+- Notice board: School Admins for their school, Platform Admins for one school
+  or every school; read by every role for their audience
+- Staff reviews: five 1–5 ratings and a comment per teacher per month; private
+  to the School Admin and the teacher
+- Honours: Staff of the Month and Student of the Month; families see only the
+  Staff of the Month and their own child's
 - List endpoints support the RecordsTable pattern (pagination, sort, filter) — no chart/aggregate endpoints needed
 
 ## Explicitly out of scope (do not build)
@@ -58,7 +86,10 @@ observations: a star)
 - Chat/messaging
 - Guardian hierarchies, multi-school student records
 - Billing/payments
-- CSV import pipeline (PRD marks this V1, not MVP)
+- A sync with a school's own system or CRM (spreadsheet import is in since
+  29 Oct 2026; the frontend shows the sync as coming soon)
+- Medical files, report uploads or clinical health data (the care needs above
+  are the family's own words)
 
 ## Definition of done (per endpoint)
 - Zod-validated request/response
