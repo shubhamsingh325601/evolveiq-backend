@@ -108,6 +108,9 @@ model User {
   staffReviewsWritten  StaffReview[]       @relation("StaffReviewer")
   honours              Honour[]            @relation("Honoree")
   honoursAwarded       Honour[]            @relation("HonourAwarder")
+  messagesAbout        Message[]           @relation("MessageStudent")
+  messagesAsStaff      Message[]           @relation("MessageStaff")
+  messagesSent         Message[]           @relation("MessageSender")
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -680,4 +683,26 @@ model Honour {
   @@unique([kind, month, honoreeId], map: "honours_kind_month_honoree_id_key")
   @@index([schoolId, month], map: "honours_school_id_month_idx")
   @@map("honours")
+}
+
+/// One note between a parent and a member of school staff, about one child. A thread is
+/// (student, staff): the parent is the student's linked parent. Parents start threads; staff reply.
+model Message {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId String    @map("student_id") @db.Uuid
+  staffId   String    @map("staff_id") @db.Uuid
+  senderId  String    @map("sender_id") @db.Uuid
+  /// 1–1000 characters (CHECK in the migration).
+  body      String
+  /// When the other side opened it.
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  student User @relation("MessageStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  staff   User @relation("MessageStaff", fields: [staffId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sender  User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([studentId, staffId, createdAt], map: "messages_thread_idx")
+  @@index([staffId, createdAt], map: "messages_staff_id_created_at_idx")
+  @@map("messages")
 }

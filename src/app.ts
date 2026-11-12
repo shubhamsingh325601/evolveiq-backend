@@ -23,6 +23,7 @@ import honoursRoutes from './modules/honours/honours.routes.js';
 import importsRoutes from './modules/imports/imports.routes.js';
 import noticesRoutes from './modules/notices/notices.routes.js';
 import { familyObservationsRoutes, observationsRoutes } from './modules/observations/observations.routes.js';
+import { familyMessagesRoutes, staffMessagesRoutes } from './modules/messages/messages.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import progressRoutes from './modules/progress/progress.routes.js';
 import classesRoutes from './modules/schools/classes.routes.js';
@@ -106,6 +107,8 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     await app.register(staffReviewsRoutes, { prefix: `${prefix}/staff-reviews`, db, now });
     await app.register(honoursRoutes, { prefix: `${prefix}/honours`, db, now });
     await app.register(importsRoutes, { prefix: `${prefix}/imports`, db });
+    await app.register(familyMessagesRoutes, { prefix: `${prefix}/students`, db, now });
+    await app.register(staffMessagesRoutes, { prefix: `${prefix}/messages`, db, now });
     // Family app (parents): parent-safe responses only.
     await app.register(familyObservationsRoutes, { prefix: `${prefix}/family/observations`, db });
     await app.register(familyAssignmentsRoutes, { prefix: `${prefix}/family/children`, db });

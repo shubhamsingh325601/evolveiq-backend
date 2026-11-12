@@ -45,6 +45,11 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Streak calculation | Done | | on `API`, not yet merged to `main`. Asia/Kolkata days |
 | Stars | Done | | Client feedback 21 Oct 2026; not yet committed. `GET /students/:studentId/stars` (student, parent, teacher, psychologist; student scope), paged, newest first; the monthly summary counts the month's stars; demo seed has stars from teachers and parents |
 
+## Messages
+| Item | Status | Owner | Notes |
+|---|---|---|---|
+| Parent to school messages (Connect) | Done | | 12 Nov 2026; not yet committed. Migration `20261112000000_messages` (deploy before the frontend). `GET /students/:id/contacts` (names and roles only), `GET`/`POST /students/:id/messages` (parent), staff inbox `GET /messages`, thread `GET`/`POST /messages/:studentId` (reply only, staff never start a thread). Typechecks; the supertest file `messages.routes.test.ts` is written but not yet run (no Postgres here) |
+
 ## School / Platform administration
 | Item | Status | Owner | Notes |
 |---|---|---|---|

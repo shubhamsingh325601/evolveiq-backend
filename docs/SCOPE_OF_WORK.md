@@ -83,7 +83,7 @@ observations: a star)
 ## Explicitly out of scope (do not build)
 - Any analytics/chart aggregation endpoints
 - Permission editor / audit log
-- Chat/messaging
+- Open chat: groups, attachments, staff-started threads, real-time delivery. (Change, 12 Nov 2026: short parent-to-school notes are in scope: a parent writes to a child's class teacher, counsellor or school admin, and staff reply. See `/students/:id/contacts`, `/students/:id/messages`, `/messages`.)
 - Guardian hierarchies, multi-school student records
 - Billing/payments
 - A sync with a school's own system or CRM (spreadsheet import is in since
