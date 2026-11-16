@@ -12,6 +12,7 @@
 //     no Level on a positive one), on assignments (recommended ⇔ linked to an observation)
 //     and on text lengths.
 //   - The trigger that makes monthly_summaries rows immutable.
+//   - CHECK constraints on support_tickets.subject and support_tickets.body lengths.
 
 generator client {
   provider            = "prisma-client"
@@ -44,12 +45,13 @@ model School {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  users        User[]
-  classes      Class[]
-  observations Observation[]
-  notices      Notice[]
-  staffReviews StaffReview[]
-  honours      Honour[]
+  users          User[]
+  classes        Class[]
+  observations   Observation[]
+  notices        Notice[]
+  staffReviews   StaffReview[]
+  honours        Honour[]
+  supportTickets SupportTicket[]
 
   @@index([name], map: "schools_name_idx")
   @@index([createdAt], map: "schools_created_at_idx")
@@ -111,6 +113,7 @@ model User {
   messagesAbout        Message[]           @relation("MessageStudent")
   messagesAsStaff      Message[]           @relation("MessageStaff")
   messagesSent         Message[]           @relation("MessageSender")
+  supportTicketsRaised SupportTicket[]
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -705,4 +708,33 @@ model Message {
   @@index([studentId, staffId, createdAt], map: "messages_thread_idx")
   @@index([staffId, createdAt], map: "messages_staff_id_created_at_idx")
   @@map("messages")
+}
+
+enum SupportTicketStatus {
+  open
+  in_progress
+  resolved
+
+  @@map("support_ticket_status")
+}
+
+/// IT Help Desk tickets — a gap found against the client's UI prototype (16 Nov 2026), not yet
+/// a confirmed client request; built so the project is ready to demo (see SCOPE_OF_WORK.md). A
+/// ticket always belongs to the school it was raised in.
+model SupportTicket {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId   String              @map("school_id") @db.Uuid
+  raisedById String              @map("raised_by_id") @db.Uuid
+  /// 1–120 characters (CHECK constraint in the migration).
+  subject    String
+  body       String?
+  status     SupportTicketStatus @default(open)
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  raisedBy User   @relation(fields: [raisedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([schoolId, createdAt], map: "support_tickets_school_id_created_at_idx")
+  @@map("support_tickets")
 }

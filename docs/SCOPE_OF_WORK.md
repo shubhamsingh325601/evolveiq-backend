@@ -24,6 +24,12 @@ Month and only their own child's honours. School and Platform Admins
 **import** students, teachers and parents from a spreadsheet, and can
 **remove** what has no records: an unused account, a class, an empty school.
 
+**Change, 16 Nov 2026:** IT help desk, a gap found against the client's prototype — not yet
+confirmed scope. The project owner asked for it to be built anyway, so it's ready to demo:
+Teachers, Psychologists and School Admins raise a ticket (subject, optional detail) for their own
+school; School Admins work their own school's tickets, Platform Admins any; status moves `open` →
+`in_progress` → `resolved`. See `/support-tickets`.
+
 ## Core workflow to support end-to-end
 Observe → Review → Assign → Do → See (concerns); Observe → Celebrate (positive
 observations: a star)
