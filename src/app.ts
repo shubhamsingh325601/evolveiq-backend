@@ -29,6 +29,7 @@ import progressRoutes from './modules/progress/progress.routes.js';
 import classesRoutes from './modules/schools/classes.routes.js';
 import schoolsRoutes from './modules/schools/schools.routes.js';
 import staffReviewsRoutes from './modules/staff/staff-reviews.routes.js';
+import supportTicketsRoutes from './modules/support-tickets/support-tickets.routes.js';
 import parentStudentsRoutes from './modules/users/parent-students.routes.js';
 import { studentSupportRoutes, supportPlansRoutes } from './modules/support/support.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
@@ -109,6 +110,9 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     await app.register(importsRoutes, { prefix: `${prefix}/imports`, db });
     await app.register(familyMessagesRoutes, { prefix: `${prefix}/students`, db, now });
     await app.register(staffMessagesRoutes, { prefix: `${prefix}/messages`, db, now });
+    // IT Help Desk: a gap found against the client's UI prototype (16 Nov 2026), not yet a
+    // confirmed client request — see docs/SCOPE_OF_WORK.md.
+    await app.register(supportTicketsRoutes, { prefix: `${prefix}/support-tickets`, db });
     // Family app (parents): parent-safe responses only.
     await app.register(familyObservationsRoutes, { prefix: `${prefix}/family/observations`, db });
     await app.register(familyAssignmentsRoutes, { prefix: `${prefix}/family/children`, db });

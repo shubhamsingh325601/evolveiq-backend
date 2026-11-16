@@ -50,6 +50,11 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 |---|---|---|---|
 | Parent to school messages (Connect) | Done | | 12 Nov 2026; not yet committed. Migration `20261112000000_messages` (deploy before the frontend). `GET /students/:id/contacts` (names and roles only), `GET`/`POST /students/:id/messages` (parent), staff inbox `GET /messages`, thread `GET`/`POST /messages/:studentId` (reply only, staff never start a thread). Typechecks; the supertest file `messages.routes.test.ts` is written but not yet run (no Postgres here) |
 
+## IT Help Desk (gap found against client prototype, 16 Nov 2026 — not yet confirmed scope)
+| Item | Status | Owner | Notes |
+|---|---|---|---|
+| Ticketing (`SupportTicket`) | Done | | Not yet committed. Migration `20261116000000_support_tickets`. `POST /support-tickets` (teacher, psychologist, school admin; own school, starts `open`); `GET /support-tickets` (school admin: whole school; teacher/psychologist: only their own; platform admin: any school, optional `schoolId` filter); `PATCH /support-tickets/:ticketId` status only (school admin: own school; platform admin: any; 404 outside scope). No DB reachable in this sandbox to run `prisma migrate dev` — migration SQL written by hand against the existing migrations' style; apply and verify against a real Postgres before merging |
+
 ## School / Platform administration
 | Item | Status | Owner | Notes |
 |---|---|---|---|
