@@ -11,6 +11,9 @@ on the student's profile at once, never reviewed, never Significant and never a
 growth area. Parents can record positive observations too. The frontend calls
 the psychologist the school **Counsellor**.
 
+**Change, 16 Nov 2026:** Events & Competitions, a gap found against the client's prototype —
+not yet confirmed scope.
+
 **Change, 29 Oct 2026 (client feedback):** the school side grows beyond the
 observation workflow. Each student has **health and care needs** (conditions
 such as diabetes, asthma, ADHD or dyslexia, allergies, medication, care notes,
@@ -97,6 +100,15 @@ prototype — not yet confirmed scope.
   see and marks their own enrolment complete — no roster of other staff's
   enrolments, no completion-rate or "X% of staff" endpoint (that is the
   frontend's job from these same list endpoints)
+
+### Events & Competitions (16 Nov 2026, not yet confirmed scope)
+- National / State / Inter-School / Intra-School competitions: a School Admin (their own
+  school) or Platform Admin (naming a real school) enters the school
+- A Teacher nominates which of their own students take part; one nomination per student per
+  competition
+- Each competition's own detail lists its own nominations (`studentId`, `studentName`,
+  `nominatedBy`) — no leaderboard, no "most-nominated student", no school-wide or cross-school
+  stats; see "Explicitly out of scope" below
 
 ## Explicitly out of scope (do not build)
 - Any analytics/chart aggregation endpoints

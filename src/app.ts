@@ -18,6 +18,7 @@ import { createAuthRepository } from './modules/auth/auth.repository.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import { createAuthenticate } from './modules/auth/authenticate.js';
 import { initDummyHash } from './modules/auth/password.js';
+import competitionsRoutes from './modules/competitions/competitions.routes.js';
 import { classHealthRoutes, studentHealthRoutes } from './modules/health/health.routes.js';
 import honoursRoutes from './modules/honours/honours.routes.js';
 import importsRoutes from './modules/imports/imports.routes.js';
@@ -110,6 +111,9 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     await app.register(honoursRoutes, { prefix: `${prefix}/honours`, db, now });
     // Gap found against the client's prototype, not yet confirmed scope (SCOPE_OF_WORK.md, 16 Nov 2026).
     await app.register(trainingsRoutes, { prefix: `${prefix}/trainings`, db, now });
+    // Events & Competitions: a gap found against the client's prototype, not yet confirmed
+    // scope (docs/SCOPE_OF_WORK.md, 16 Nov 2026).
+    await app.register(competitionsRoutes, { prefix: `${prefix}/competitions`, db });
     await app.register(importsRoutes, { prefix: `${prefix}/imports`, db });
     await app.register(familyMessagesRoutes, { prefix: `${prefix}/students`, db, now });
     await app.register(staffMessagesRoutes, { prefix: `${prefix}/messages`, db, now });
