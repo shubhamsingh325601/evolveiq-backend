@@ -28,6 +28,9 @@ Month and only their own child's honours. School and Platform Admins
 Observe → Review → Assign → Do → See (concerns); Observe → Celebrate (positive
 observations: a star)
 
+**Change, 16 Nov 2026:** Staff Training & Development Hub, a gap found against the client's
+prototype — not yet confirmed scope.
+
 ## In scope by domain
 
 ### Auth & users
@@ -79,6 +82,15 @@ observations: a star)
 - Honours: Staff of the Month and Student of the Month; families see only the
   Staff of the Month and their own child's
 - List endpoints support the RecordsTable pattern (pagination, sort, filter) — no chart/aggregate endpoints needed
+
+### Staff Training & Development Hub (gap found against the client's prototype, 16 Nov 2026)
+- Trainings: School Admins offer one for their school, Platform Admins for one
+  school or every school; read by Teachers, Psychologists, School Admins and
+  Platform Admins
+- Enrolment: a Teacher or Psychologist enrols themself in a training they can
+  see and marks their own enrolment complete — no roster of other staff's
+  enrolments, no completion-rate or "X% of staff" endpoint (that is the
+  frontend's job from these same list endpoints)
 
 ## Explicitly out of scope (do not build)
 - Any analytics/chart aggregation endpoints

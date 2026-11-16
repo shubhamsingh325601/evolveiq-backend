@@ -50,6 +50,7 @@ model School {
   notices      Notice[]
   staffReviews StaffReview[]
   honours      Honour[]
+  trainings    Training[]
 
   @@index([name], map: "schools_name_idx")
   @@index([createdAt], map: "schools_created_at_idx")
@@ -111,6 +112,8 @@ model User {
   messagesAbout        Message[]           @relation("MessageStudent")
   messagesAsStaff      Message[]           @relation("MessageStaff")
   messagesSent         Message[]           @relation("MessageSender")
+  trainingsPosted      Training[]
+  trainingEnrolments   TrainingEnrolment[]
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -705,4 +708,54 @@ model Message {
   @@index([studentId, staffId, createdAt], map: "messages_thread_idx")
   @@index([staffId, createdAt], map: "messages_staff_id_created_at_idx")
   @@map("messages")
+}
+
+/// A gap found against the client's prototype, not yet confirmed scope (SCOPE_OF_WORK.md,
+/// 16 Nov 2026).
+enum TrainingRequirement {
+  mandatory
+  recommended
+  optional
+
+  @@map("training_requirement")
+}
+
+/// The Staff Training & Development Hub: a workshop or course a school offers its staff. A NULL
+/// school is a Platform Admin's training for every school, exactly like the notice board.
+model Training {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String?             @map("school_id") @db.Uuid
+  title       String
+  description String?
+  scheduledOn DateTime?           @map("scheduled_on") @db.Date
+  requirement TrainingRequirement
+  /// 0–20 (CHECK constraint in the migration).
+  credits     Int                 @db.SmallInt
+  createdById String              @map("created_by_id") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school     School?             @relation(fields: [schoolId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  enrolments TrainingEnrolment[]
+
+  @@index([schoolId, createdAt], map: "trainings_school_id_created_at_idx")
+  @@map("trainings")
+}
+
+/// One row per staff member enrolled in a training.
+model TrainingEnrolment {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trainingId  String    @map("training_id") @db.Uuid
+  staffId     String    @map("staff_id") @db.Uuid
+  isComplete  Boolean   @default(false) @map("is_complete")
+  enrolledAt  DateTime  @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  training Training @relation(fields: [trainingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  staff    User     @relation(fields: [staffId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([trainingId, staffId], map: "training_enrolments_training_id_staff_id_key")
+  @@index([staffId], map: "training_enrolments_staff_id_idx")
+  @@map("training_enrolments")
 }
