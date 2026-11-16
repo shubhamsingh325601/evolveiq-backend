@@ -73,6 +73,11 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 | Honours (Staff and Students of the Month) | Done | | Not yet committed. `/honours`; families see the Staff of the Month and their own child only |
 | Demo data for the above | Done | | Not yet committed. `db:seed-demo` adds them, and tops up a demo database seeded before 29 Oct 2026 |
 
+## Staff Training & Development Hub
+| Item | Status | Owner | Notes |
+|---|---|---|---|
+| Trainings + enrolments | Done | | Gap found against the client's prototype, 16 Nov 2026 — not yet confirmed scope (see SCOPE_OF_WORK.md); not yet committed. `GET`/`POST /trainings` (school admin own school; platform admin one school or every school, same NULL-`schoolId` pattern as notices); `PATCH`/`DELETE /trainings/:trainingId` (own school or platform admin, 404 otherwise); `POST`/`PATCH /trainings/:trainingId/enrolment` (teacher/psychologist self-enrol and self-complete, 409 on double enrolment, 404 outside scope or never enrolled). List responses carry the caller's own `myEnrolment` only — no completion-rate or per-staff aggregate endpoint (forbidden by SCOPE_OF_WORK.md). Migration `20261116010000_trainings`; no reachable Postgres in this sandbox (no Docker, nothing on localhost:5432), so it is hand-written to match existing migrations' DDL conventions and applied only via the integration test harness, not against a real dev DB |
+
 ## Quality
 | Item | Status | Owner | Notes |
 |---|---|---|---|

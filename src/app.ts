@@ -32,6 +32,7 @@ import staffReviewsRoutes from './modules/staff/staff-reviews.routes.js';
 import supportTicketsRoutes from './modules/support-tickets/support-tickets.routes.js';
 import parentStudentsRoutes from './modules/users/parent-students.routes.js';
 import { studentSupportRoutes, supportPlansRoutes } from './modules/support/support.routes.js';
+import trainingsRoutes from './modules/trainings/trainings.routes.js';
 import usersRoutes from './modules/users/users.routes.js';
 import wellbeingRoutes from './modules/wellbeing/wellbeing.routes.js';
 import type { Db } from './shared/db/prisma.js';
@@ -107,6 +108,8 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     await app.register(noticesRoutes, { prefix: `${prefix}/notices`, db });
     await app.register(staffReviewsRoutes, { prefix: `${prefix}/staff-reviews`, db, now });
     await app.register(honoursRoutes, { prefix: `${prefix}/honours`, db, now });
+    // Gap found against the client's prototype, not yet confirmed scope (SCOPE_OF_WORK.md, 16 Nov 2026).
+    await app.register(trainingsRoutes, { prefix: `${prefix}/trainings`, db, now });
     await app.register(importsRoutes, { prefix: `${prefix}/imports`, db });
     await app.register(familyMessagesRoutes, { prefix: `${prefix}/students`, db, now });
     await app.register(staffMessagesRoutes, { prefix: `${prefix}/messages`, db, now });
