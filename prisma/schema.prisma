@@ -50,6 +50,7 @@ model School {
   notices      Notice[]
   staffReviews StaffReview[]
   honours      Honour[]
+  competitions Competition[]
 
   @@index([name], map: "schools_name_idx")
   @@index([createdAt], map: "schools_created_at_idx")
@@ -111,6 +112,9 @@ model User {
   messagesAbout        Message[]           @relation("MessageStudent")
   messagesAsStaff      Message[]           @relation("MessageStaff")
   messagesSent         Message[]           @relation("MessageSender")
+  competitionsCreated  Competition[]       @relation("CompetitionCreatedBy")
+  competitionNominations     CompetitionNomination[] @relation("CompetitionNominationStudent")
+  competitionNominationsMade CompetitionNomination[] @relation("CompetitionNominationNominator")
 
   // Partial unique indexes: race-safe duplicate prevention + the login lookup path.
   @@unique([email], map: "users_email_key", where: raw("(email IS NOT NULL)"))
@@ -705,4 +709,67 @@ model Message {
   @@index([studentId, staffId, createdAt], map: "messages_thread_idx")
   @@index([staffId, createdAt], map: "messages_staff_id_created_at_idx")
   @@map("messages")
+}
+
+// ───────────────────────────── Events & Competitions ─────────────────────────────
+// A gap found against the client's prototype, not yet confirmed scope (see SCOPE_OF_WORK.md,
+// 16 Nov 2026). A school enters students into a competition; a teacher nominates who goes.
+
+enum CompetitionLevel {
+  national
+  state
+  inter_school
+  intra_school
+
+  @@map("competition_level")
+}
+
+enum CompetitionStatus {
+  planning
+  registration_open
+  shortlisting
+  confirmed
+  finalized
+
+  @@map("competition_status")
+}
+
+/// A competition the school has entered. Unlike Notice, schoolId is required: a competition
+/// always belongs to exactly one school, never "every school".
+model Competition {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  schoolId    String            @map("school_id") @db.Uuid
+  /// 1–120 characters (CHECK in the migration), as Notice.title.
+  title       String
+  level       CompetitionLevel
+  status      CompetitionStatus @default(planning)
+  scheduledOn DateTime?         @map("scheduled_on") @db.Date
+  createdById String            @map("created_by_id") @db.Uuid
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school      School                  @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdBy   User                    @relation("CompetitionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  nominations CompetitionNomination[]
+
+  @@index([schoolId, createdAt], map: "competitions_school_id_created_at_idx")
+  @@map("competitions")
+}
+
+/// A teacher's nomination of one student for one competition. Unique per (competition, student):
+/// can't nominate the same student twice.
+model CompetitionNomination {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competitionId String   @map("competition_id") @db.Uuid
+  studentId     String   @map("student_id") @db.Uuid
+  nominatedById String   @map("nominated_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  student     User        @relation("CompetitionNominationStudent", fields: [studentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  nominatedBy User        @relation("CompetitionNominationNominator", fields: [nominatedById], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([competitionId, studentId], map: "competition_nominations_competition_id_student_id_key")
+  @@index([studentId], map: "competition_nominations_student_id_idx")
+  @@map("competition_nominations")
 }

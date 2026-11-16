@@ -50,6 +50,13 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 |---|---|---|---|
 | Parent to school messages (Connect) | Done | | 12 Nov 2026; not yet committed. Migration `20261112000000_messages` (deploy before the frontend). `GET /students/:id/contacts` (names and roles only), `GET`/`POST /students/:id/messages` (parent), staff inbox `GET /messages`, thread `GET`/`POST /messages/:studentId` (reply only, staff never start a thread). Typechecks; the supertest file `messages.routes.test.ts` is written but not yet run (no Postgres here) |
 
+## Events & Competitions (16 Nov 2026, not yet confirmed scope)
+| Item | Status | Owner | Notes |
+|---|---|---|---|
+| Competitions CRUD (School Admin / Platform Admin) | Done | | Not yet committed. Gap found against the client's prototype — not yet a confirmed client request (see SCOPE_OF_WORK.md). `POST`/`GET /competitions`, `PATCH`/`DELETE /competitions/:competitionId`; a competition always belongs to exactly one school (no "every school" option, unlike Notices); Platform Admin must name a real, existing `schoolId` (422 otherwise). Migration `20261116000000_competitions` |
+| Nominations (Teacher) | Done | | `POST`/`DELETE /competitions/:competitionId/nominations[/:studentId]`; validated against the shared student scope (`users/student-scope.ts`), same as messages; 422 `INVALID_REFERENCE` for a student outside the teacher's reach, 409 on a double nomination, 403 when a teacher tries to remove a nomination they didn't make. No leaderboard/aggregate endpoint of any kind — each competition's own detail nests only its own nominations list, never a cross-competition or cross-school stat, per SCOPE_OF_WORK.md's "no analytics/chart aggregation" rule |
+| Integration tests | Blocked | | `competitions.routes.test.ts` is written (role-access boundaries, cross-school 404s, nomination 422/409/403 paths) but not run — no Postgres reachable in this environment (no Docker, nothing on localhost:5432), the same limitation already documented above for `messages.routes.test.ts`. Typechecks; `npm run test:unit` passes (282/282) |
+
 ## School / Platform administration
 | Item | Status | Owner | Notes |
 |---|---|---|---|
