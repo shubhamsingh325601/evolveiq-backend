@@ -531,6 +531,7 @@ Staff reviews are private to the School Admin and the teacher; the wall shows ho
 - **Error hygiene.** Unexpected and database errors are logged server-side; clients get `INTERNAL_ERROR` only. Unhandled Prisma unique violations map to 409 without constraint names.
 - **Resource bounds.** 16 KB body limit; password ≤ 128 chars; `limit` ≤ 100 and `page` ≤ 10 000; DB `statement_timeout` 5 s; connect timeout 5 s.
 - **API docs** are on by default except when `NODE_ENV=production` (`API_DOCS_ENABLED`).
+- **CORS.** Only the browser origins in `CORS_ORIGINS` get CORS headers; startup fails in production if it's unset. Outside production an empty value allows any origin (tested).
 
 ## 8. Recommended before production (not built, per scope)
 

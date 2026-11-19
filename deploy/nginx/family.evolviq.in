@@ -1,0 +1,28 @@
+# EvolvIQ family-web (Parent + Student): static single-page app built by evolveiq-frontend.
+# Install as /etc/nginx/sites-available/family.evolviq.in (+ symlink in sites-enabled).
+# Certbot (--nginx) adds the HTTPS listener and the HTTP -> HTTPS redirect.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name family.evolviq.in;
+
+    root /var/www/evolviq/family-web;
+    index index.html;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # Vite fingerprints everything under /assets, so it can be cached for good.
+    location /assets/ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    # Client-side routes (BrowserRouter) all load index.html, which is never cached
+    # so a new deploy is picked up on the next visit.
+    location / {
+        expires -1;
+        try_files $uri $uri/ /index.html;
+    }
+}

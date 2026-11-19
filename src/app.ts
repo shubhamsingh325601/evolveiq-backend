@@ -61,7 +61,7 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
   }).withTypeProvider<ZodTypeProvider>();
 
   await app.register(cors, {
-    origin: true,
+    origin: config.cors.origins === true ? true : [...config.cors.origins],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });

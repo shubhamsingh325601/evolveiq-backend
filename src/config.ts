@@ -26,6 +26,10 @@ export interface AppConfig {
     /** Serve the OpenAPI document and the Scalar API reference under /docs. */
     readonly isEnabled: boolean;
   };
+  readonly cors: {
+    /** Browser origins allowed to call the API; `true` reflects any origin (never in production). */
+    readonly origins: true | readonly string[];
+  };
   /** Non-fatal configuration problems (e.g. deprecated variable names), logged at startup. */
   readonly warnings: readonly string[];
 }
@@ -68,6 +72,35 @@ function accessSecret(warnings: string[]): string {
     return legacy;
   }
   throw new Error('Missing required environment variable: JWT_ACCESS_SECRET');
+}
+
+// CORS_ORIGINS: comma-separated browser origins, e.g. "https://teacher.evolviq.in,https://family.evolviq.in".
+// Required in production. Elsewhere, leaving it empty allows any origin: local development goes
+// through the Vite proxy, so the browser never calls the API cross-origin there anyway.
+function corsOrigins(env: string): true | readonly string[] {
+  const origins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+  if (origins.length === 0) {
+    if (env === 'production') throw new Error('Missing required environment variable: CORS_ORIGINS (required in production)');
+    return true;
+  }
+  return Object.freeze(
+    origins.map((origin) => {
+      let parsed: URL | undefined;
+      try {
+        parsed = new URL(origin);
+      } catch {
+        // reported below
+      }
+      // An origin is scheme://host[:port] only: no path, query, credentials or wildcard.
+      if (!parsed || !/^https?:$/.test(parsed.protocol) || parsed.origin !== origin.toLowerCase()) {
+        throw new Error(`CORS_ORIGINS has an invalid origin "${origin}": use scheme://host[:port], e.g. https://teacher.evolviq.in`);
+      }
+      return parsed.origin;
+    }),
+  );
 }
 
 export function loadConfig(): AppConfig {
@@ -117,6 +150,7 @@ export function loadConfig(): AppConfig {
       // On by default everywhere except production; opt in explicitly there.
       isEnabled: bool('API_DOCS_ENABLED', env !== 'production'),
     }),
+    cors: Object.freeze({ origins: corsOrigins(env) }),
     warnings: Object.freeze(warnings),
   });
 }

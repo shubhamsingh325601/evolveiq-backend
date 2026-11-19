@@ -67,3 +67,29 @@ describe('JWT_ACCESS_SECRET (renamed from JWT_SECRET)', () => {
     expect(() => withEnv({ JWT_ACCESS_SECRET: undefined, JWT_SECRET: REFRESH, JWT_REFRESH_SECRET: REFRESH }, loadConfig)).toThrow(/different/);
   });
 });
+
+describe('CORS_ORIGINS', () => {
+  test('unset outside production → any origin is allowed (local development)', () => {
+    expect(withEnv({ CORS_ORIGINS: undefined, NODE_ENV: 'development' }, loadConfig).cors.origins).toBe(true);
+    expect(withEnv({ CORS_ORIGINS: ' , ', NODE_ENV: 'test' }, loadConfig).cors.origins).toBe(true);
+  });
+
+  test('unset or blank in production → startup fails naming the variable', () => {
+    expect(() => withEnv({ CORS_ORIGINS: undefined, NODE_ENV: 'production' }, loadConfig)).toThrow(/CORS_ORIGINS/);
+    expect(() => withEnv({ CORS_ORIGINS: ' , ', NODE_ENV: 'production' }, loadConfig)).toThrow(/CORS_ORIGINS/);
+  });
+
+  test('a comma-separated list is trimmed, loses trailing slashes and is lower-cased', () => {
+    const cfg = withEnv(
+      { NODE_ENV: 'production', CORS_ORIGINS: ' https://teacher.evolviq.in/ ,https://Family.evolviq.in,http://localhost:5174' },
+      loadConfig,
+    );
+    expect(cfg.cors.origins).toEqual(['https://teacher.evolviq.in', 'https://family.evolviq.in', 'http://localhost:5174']);
+  });
+
+  test('anything that is not scheme://host[:port] is rejected', () => {
+    for (const bad of ['*', 'teacher.evolviq.in', 'https://evolviq.in/app', 'ftp://evolviq.in', 'https://user:pw@evolviq.in', 'https://evolviq.in?x=1']) {
+      expect(() => withEnv({ CORS_ORIGINS: bad }, loadConfig), bad).toThrow(/CORS_ORIGINS has an invalid origin/);
+    }
+  });
+});

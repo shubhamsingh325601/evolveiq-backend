@@ -1,0 +1,39 @@
+# EvolvIQ production: the API and its own PostgreSQL, isolated from anything else on the host.
+#   cd deploy && docker compose -f docker-compose.prod.yml up -d --build
+# Secrets live in deploy/.env on the server (never committed); see deploy/README.md.
+# Nothing is reachable from outside: the API listens on 127.0.0.1:3000 for Nginx only,
+# and PostgreSQL has no published port at all.
+name: evolviq
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolviq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in deploy/.env}
+      POSTGRES_DB: evolviq
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolviq -d evolviq"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ..
+    image: evolviq-api:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://evolviq:${DB_PASSWORD}@db:5432/evolviq
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  pgdata:
