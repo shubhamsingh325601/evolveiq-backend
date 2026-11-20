@@ -19,8 +19,15 @@ server {
         try_files $uri =404;
     }
 
+    # The installable app's manifest: nginx's mime.types doesn't know .webmanifest.
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        expires -1;
+    }
+
     # Client-side routes (BrowserRouter) all load index.html, which is never cached
-    # so a new deploy is picked up on the next visit.
+    # so a new deploy is picked up on the next visit. That includes sw.js, so a new
+    # version of the installed app reaches phones on their next visit.
     location / {
         expires -1;
         try_files $uri $uri/ /index.html;
