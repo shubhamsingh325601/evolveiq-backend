@@ -1,0 +1,36 @@
+# EvolvIQ for students: family-web built with VITE_FAMILY_AUDIENCE=students
+# (client request, 20 Nov 2026: children at student.evolviq.in, parents at family.evolviq.in).
+# Install as /etc/nginx/sites-available/student.evolviq.in (+ symlink in sites-enabled).
+# Certbot (--nginx) adds the HTTPS listener and the HTTP -> HTTPS redirect.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name student.evolviq.in;
+
+    root /var/www/evolviq/student-web;
+    index index.html;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # Vite fingerprints everything under /assets, so it can be cached for good.
+    location /assets/ {
+        expires 1y;
+        try_files $uri =404;
+    }
+
+    # The installable app's manifest: nginx's mime.types doesn't know .webmanifest.
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        expires -1;
+    }
+
+    # Client-side routes (BrowserRouter) all load index.html, which is never cached
+    # so a new deploy is picked up on the next visit. That includes sw.js, so a new
+    # version of the installed app reaches phones on their next visit.
+    location / {
+        expires -1;
+        try_files $uri $uri/ /index.html;
+    }
+}

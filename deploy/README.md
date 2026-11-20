@@ -5,8 +5,20 @@ The VPS is shared with other live sites. EvolvIQ only adds its own pieces:
 | Piece | Where on the server |
 |---|---|
 | API + PostgreSQL 16 (Docker Compose project `evolviq`) | `/opt/evolviq/app` (source), `/opt/evolviq/app/deploy/.env` (secrets) |
-| Frontend builds | `/var/www/evolviq/{school-web,admin-panel,family-web}` |
+| Frontend builds | `/var/www/evolviq/{school-web,admin-panel,family-web,student-web}` |
 | Nginx sites | `/etc/nginx/sites-available/<domain>` (the files in `deploy/nginx/`) |
+
+| Address | App |
+|---|---|
+| `api.evolviq.in` | this API |
+| `teacher.evolviq.in` | school-web (teachers, psychologists) |
+| `system-admin.evolviq.in` | admin-panel (school admins, platform admin) |
+| `family.evolviq.in` | family-web built with `VITE_FAMILY_AUDIENCE=parents` → `family-web/` |
+| `student.evolviq.in` | family-web built with `VITE_FAMILY_AUDIENCE=students` → `student-web/` |
+
+The two family builds are separate installable apps (PWA). Build each with its own
+`VITE_FAMILY_AUDIENCE` and `VITE_FAMILY_OTHER_URL` (the other site, for the link on the
+sign-in screen), one after the other: both write to `apps/family-web/dist`.
 
 **Temporary hostnames (until evolviq.in's .IN KYC is done):** the sites run on the VPS's own
 Hostinger hostname, `{api,teacher,system-admin,family}.srv1833617.hstgr.cloud`. Their Nginx
