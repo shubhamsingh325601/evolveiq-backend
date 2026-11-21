@@ -80,6 +80,8 @@ model User {
 
   school        School?          @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   refreshTokens RefreshToken[]
+  /// Adults: codes emailed by "Forgot password" (21 Nov 2026).
+  passwordResetCodes PasswordResetCode[]
   /// Parents: their children ("one parent, many children").
   childLinks    ParentStudent[]  @relation("ParentLinks")
   /// Students: their parent, if linked.
@@ -142,6 +144,24 @@ model RefreshToken {
 
   @@index([familyId], map: "refresh_tokens_family_active_idx", where: raw("(revoked_at IS NULL)"))
   @@map("refresh_tokens")
+}
+
+/// "Forgot password" (21 Nov 2026): a 6-digit code emailed to an adult. Only the newest code of
+/// an account works — 15 minutes, 5 tries, once. Only the argon2id hash of the code is stored.
+model PasswordResetCode {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash")
+  /// Tries so far; one is taken before each check (CHECK attempts >= 0 in the migration).
+  attempts  Int       @default(0) @db.SmallInt
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, createdAt(sort: Desc)], map: "password_reset_codes_user_id_created_at_idx")
+  @@map("password_reset_codes")
 }
 
 /// Parent ↔ student. The primary key on student_id = a student has at most one parent.

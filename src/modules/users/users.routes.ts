@@ -10,6 +10,7 @@ import { actorOf, describeRoles, requireRole, Role } from '../../shared/rbac/ind
 import { createUsersRepository } from './users.repository.js';
 import {
   ListUsersQuerySchema,
+  SetSecretBodySchema,
   UpdateUserBodySchema,
   UserIdParamsSchema,
   UserListResponseSchema,
@@ -134,6 +135,32 @@ const usersRoutes: FastifyPluginAsyncZod<UsersRoutesOptions> = async (app, { db 
       response: { 200: UserResponseSchema, ...errorResponses(400, 401, 403, 404, 500) },
     },
     handler: async (request) => ({ user: await service.reactivate(actorOf(request), request.params.userId) }),
+  });
+
+  // POST /api/v1/users/:userId/set-password — a new password (adult) or PIN (student), for
+  // someone who forgot theirs (asked for on 21 Nov 2026)
+  app.post('/:userId/set-password', {
+    onRequest: [app.authenticate, userManagers],
+    schema: {
+      ...docs,
+      summary: 'Set a new password or PIN',
+      description:
+        `${describeRoles(userManagers.allowedRoles)} ${SCOPE_NOTE} For someone who forgot theirs: \`password\` ` +
+        '(10–128 characters) for an adult, `pin` (6 digits) for a student. Clears their login lockout and ends ' +
+        'every session of the account (refresh tokens revoked). Nothing is emailed: tell them the new one ' +
+        'yourself. Your own account → 403 (use POST /auth/change-password). Users outside the reach of the ' +
+        'caller return 404.',
+      params: UserIdParamsSchema,
+      body: SetSecretBodySchema,
+      response: {
+        204: z.null().meta({ description: 'Set. No body.' }),
+        ...errorResponses(400, 401, 403, 404, 500),
+      },
+    },
+    handler: async (request, reply) => {
+      await service.setSecret(actorOf(request), request.params.userId, request.body);
+      return reply.code(204).send(null);
+    },
   });
 };
 

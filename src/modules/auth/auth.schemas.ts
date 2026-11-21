@@ -21,12 +21,12 @@ export const EmailSchema = z
   .regex(EMAIL, 'must be a valid email address')
   .meta({ format: 'email', example: 'kavya@school-a.test' });
 // NIST SP 800-63B style: length over composition rules. Max bounds hashing cost.
-const PasswordSchema = z.string().min(10).max(128).meta({ example: 'Correct-Horse-1' });
+export const PasswordSchema = z.string().min(10).max(128).meta({ example: 'Correct-Horse-1' });
 export const StudentIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9-]{3,32}$/, 'must be 3–32 letters, digits or hyphens')
   .meta({ example: 'A-1001' });
-const PinSchema = z.string().regex(/^[0-9]{6}$/, 'must be exactly 6 digits').meta({ example: '482913' });
+export const PinSchema = z.string().regex(/^[0-9]{6}$/, 'must be exactly 6 digits').meta({ example: '482913' });
 // Any 8-4-4-4-12 hex UUID (same as the previous Ajv "uuid" format).
 const UuidSchema = z.guid();
 
@@ -123,3 +123,37 @@ export const RefreshResponseSchema = z.object(TOKEN_FIELDS).meta({ id: 'TokenRes
 export const LogoutBodySchema = z
   .strictObject({ refreshToken: z.string().min(1).max(2048) })
   .meta({ id: 'LogoutRequest' });
+
+// ───── Forgot password (asked for on 21 Nov 2026) and change password ─────
+
+// Lenient like login: the email is trimmed and lower-cased by the service, and anything that
+// isn't an active adult's email simply gets no code.
+const ResetEmailSchema = z.string().min(1).max(254).meta({ example: 'kavya@school-a.test' });
+
+export const ForgotPasswordBodySchema = z
+  .strictObject({ email: ResetEmailSchema })
+  .meta({ id: 'ForgotPasswordRequest' });
+
+export const ForgotPasswordResponseSchema = z
+  .object({ message: z.string() })
+  .meta({ id: 'ForgotPasswordResponse' });
+
+export const ResetPasswordBodySchema = z
+  .strictObject({
+    email: ResetEmailSchema,
+    code: z.string().regex(/^[0-9]{6}$/, 'must be the 6 digits from the email').meta({ example: '048213' }),
+    newPassword: PasswordSchema,
+  })
+  .meta({ id: 'ResetPasswordRequest' });
+
+export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
+
+export const ChangePasswordBodySchema = z
+  .strictObject({
+    // Like login, the current password is checked as it is, whatever today's rules say.
+    currentPassword: z.string().min(1).max(128),
+    newPassword: PasswordSchema,
+  })
+  .meta({ id: 'ChangePasswordRequest' });
+
+export type ChangePasswordBody = z.infer<typeof ChangePasswordBodySchema>;

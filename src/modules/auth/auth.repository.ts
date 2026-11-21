@@ -8,6 +8,7 @@
 // Simple lookups and updates use the fluent Prisma Client API.
 import type { Db } from '../../shared/db/prisma.js';
 import type { Role } from '../../shared/rbac/index.js';
+import { replaceSecret } from './secret.repository.js';
 
 export interface InsertUserInput {
   readonly actorId: string;
@@ -110,6 +111,21 @@ export function createAuthRepository(db: Db) {
                (locked_until IS NOT NULL)                          AS has_lock
         FROM users WHERE student_login_id = ${studentLoginId}`;
       return rows[0] ?? null;
+    },
+
+    // Change password: the signed-in user's hash and lock state (same columns as login).
+    async findUserById(userId: string): Promise<LoginUserRow | null> {
+      const rows = await db.$queryRaw<LoginUserRow[]>`
+        SELECT id, role, school_id, full_name, secret_hash, is_active, failed_login_attempts,
+               (locked_until IS NOT NULL AND locked_until > now()) AS is_locked,
+               (locked_until IS NOT NULL)                          AS has_lock
+        FROM users WHERE id = ${userId}::uuid`;
+      return rows[0] ?? null;
+    },
+
+    // Change password: the new hash, a clean lockout and every session ended (secret.repository.ts).
+    async changeSecret(userId: string, secretHash: string): Promise<boolean> {
+      return db.$transaction((tx) => replaceSecret(tx, userId, secretHash));
     },
 
     // Atomic increment (no read-modify-write race). On reaching the limit the account is

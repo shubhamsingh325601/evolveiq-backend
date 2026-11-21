@@ -31,6 +31,7 @@ import classesRoutes from './modules/schools/classes.routes.js';
 import schoolsRoutes from './modules/schools/schools.routes.js';
 import staffReviewsRoutes from './modules/staff/staff-reviews.routes.js';
 import supportTicketsRoutes from './modules/support-tickets/support-tickets.routes.js';
+import familyChildrenRoutes from './modules/users/family-children.routes.js';
 import parentStudentsRoutes from './modules/users/parent-students.routes.js';
 import { studentSupportRoutes, supportPlansRoutes } from './modules/support/support.routes.js';
 import trainingsRoutes from './modules/trainings/trainings.routes.js';
@@ -38,6 +39,8 @@ import usersRoutes from './modules/users/users.routes.js';
 import wellbeingRoutes from './modules/wellbeing/wellbeing.routes.js';
 import type { Db } from './shared/db/prisma.js';
 import { errorHandler } from './shared/errors/index.js';
+import { createMailer, type Mailer } from './shared/mail/mailer.js';
+import { createBackgroundTasks } from './shared/background/background-tasks.js';
 import { assertRouteDeclaresAccess, publicAccess } from './shared/rbac/index.js';
 import { registerApiDocs } from './shared/openapi/register-api-docs.js';
 
@@ -47,9 +50,11 @@ export interface BuildAppOptions {
   isLoggerEnabled?: boolean;
   /** Clock for business-date rules (streaks, monthly summaries). Tests may fix it. */
   now?: () => Date;
+  /** Outgoing email. Defaults to the SMTP server in `config` (or the log); tests capture it. */
+  mailer?: Mailer;
 }
 
-export async function buildApp({ config, db, isLoggerEnabled = false, now = () => new Date() }: BuildAppOptions): Promise<FastifyInstance> {
+export async function buildApp({ config, db, isLoggerEnabled = false, now = () => new Date(), mailer: givenMailer }: BuildAppOptions): Promise<FastifyInstance> {
   await initDummyHash();
 
   const app = Fastify({
@@ -59,6 +64,12 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     },
     bodyLimit: 16 * 1024, // payloads are tiny; reject anything larger early
   }).withTypeProvider<ZodTypeProvider>();
+
+  const mailer = givenMailer ?? createMailer(config, app.log);
+  // Work after the response (emailing reset codes). Closing the app waits for it to finish.
+  const backgroundTasks = createBackgroundTasks(app.log);
+  app.decorate('backgroundTasks', backgroundTasks);
+  app.addHook('onClose', () => backgroundTasks.settled());
 
   await app.register(cors, {
     origin: config.cors.origins === true ? true : [...config.cors.origins],
@@ -86,7 +97,7 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
   if (config.docs.isEnabled) await registerApiDocs(app);
 
   const registerModules = async (prefix: string) => {
-    await app.register(authRoutes, { prefix: `${prefix}/auth`, db, config });
+    await app.register(authRoutes, { prefix: `${prefix}/auth`, db, config, mailer, backgroundTasks });
     await app.register(schoolsRoutes, { prefix: `${prefix}/schools`, db });
     await app.register(usersRoutes, { prefix: `${prefix}/users`, db });
     await app.register(parentStudentsRoutes, { prefix: `${prefix}/parent-students`, db });
@@ -123,6 +134,8 @@ export async function buildApp({ config, db, isLoggerEnabled = false, now = () =
     // Family app (parents): parent-safe responses only.
     await app.register(familyObservationsRoutes, { prefix: `${prefix}/family/observations`, db });
     await app.register(familyAssignmentsRoutes, { prefix: `${prefix}/family/children`, db });
+    // A parent sets a new PIN for their own child (21 Nov 2026).
+    await app.register(familyChildrenRoutes, { prefix: `${prefix}/family/children`, db });
   };
 
   await registerModules('/api/v1');

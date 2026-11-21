@@ -8,8 +8,9 @@ import { constraintViolation, Errors } from '../../shared/errors/index.js';
 import { buildPagination, type Pagination } from '../../shared/pagination/index.js';
 import { Role, type Actor } from '../../shared/rbac/index.js';
 import { rolesManagedBy } from '../auth/auth.policy.js';
+import { hashSecret } from '../auth/password.js';
 import type { ListUsersParams, UserChanges, UserRecord, UsersRepository } from './users.repository.js';
-import type { ListUsersQuery, UpdateUserBody, UserDto } from './users.schemas.js';
+import type { ListUsersQuery, SetSecretBody, UpdateUserBody, UserDto } from './users.schemas.js';
 
 // Unique index (prisma/migrations) → API field.
 const UNIQUE_FIELD: Readonly<Record<string, string>> = {
@@ -148,7 +149,25 @@ export function createUsersService(deps: { repository: UsersRepository }) {
     }
   }
 
-  return { list, getById, update, deactivate, reactivate, remove };
+  // For someone who forgot their password or PIN (asked for on 21 Nov 2026): a password for an
+  // adult, a PIN for a student. Their login lockout is cleared and every session ends. Nobody sets
+  // their own this way: they know it, and change it with POST /auth/change-password.
+  async function setSecret(actor: Actor, id: string, body: SetSecretBody): Promise<void> {
+    if (id === actor.userId) {
+      throw Errors.forbidden('Change your own password from your account menu (POST /auth/change-password).');
+    }
+    const user = await findManaged(actor, id);
+    const isStudent = user.role === Role.Student;
+    const secret = isStudent ? body.pin : body.password;
+    if (secret === undefined) {
+      throw Errors.validation(
+        [isStudent ? { field: 'pin', message: 'is required for a student' } : { field: 'password', message: 'is required for an adult' }],
+      );
+    }
+    if (!(await repository.setSecret(id, await hashSecret(secret)))) throw Errors.notFound('User');
+  }
+
+  return { list, getById, update, deactivate, reactivate, remove, setSecret };
 }
 
 export type UsersService = ReturnType<typeof createUsersService>;

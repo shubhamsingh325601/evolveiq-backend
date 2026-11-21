@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { PAGE_QUERY_FIELDS, PaginationSchema, SORT_ORDERS } from '../../shared/pagination/index.js';
 import { Role } from '../../shared/rbac/index.js';
-import { EmailSchema, FullNameSchema, StudentIdSchema } from '../auth/auth.schemas.js';
+import { EmailSchema, FullNameSchema, PasswordSchema, PinSchema, StudentIdSchema } from '../auth/auth.schemas.js';
 
 export const UserIdParamsSchema = z.strictObject({
   userId: z.guid().meta({ description: 'User ID (UUID).', example: 'df7e2c1a-4b6d-4f3e-9a1b-2c3d4e5f6a7b' }),
@@ -24,6 +24,28 @@ export const UpdateUserBodySchema = z
   .meta({ id: 'UpdateUserRequest' });
 
 export type UpdateUserBody = z.output<typeof UpdateUserBodySchema>;
+
+// ---------- Set a new password or PIN (asked for on 21 Nov 2026) ----------
+// For someone who forgot theirs: a password for an adult, a PIN for a student — checked against
+// the target's role by the service. Same rules as registration.
+export const SetSecretBodySchema = z
+  .strictObject({
+    password: PasswordSchema.optional(),
+    pin: PinSchema.optional(),
+  })
+  .refine((body) => (body.password === undefined) !== (body.pin === undefined), {
+    message: 'Provide either "password" (for an adult) or "pin" (for a student).',
+  })
+  .meta({ id: 'SetPasswordRequest' });
+
+export type SetSecretBody = z.output<typeof SetSecretBodySchema>;
+
+// A parent sets a new PIN for their own child.
+export const SetPinBodySchema = z.strictObject({ pin: PinSchema }).meta({ id: 'SetPinRequest' });
+
+export const StudentIdParamsSchema = z.strictObject({
+  studentId: z.guid().meta({ description: 'Student user ID (UUID).', example: 'df7e2c1a-4b6d-4f3e-9a1b-2c3d4e5f6a7b' }),
+});
 
 // ---------- List query ----------
 /** Sortable fields — an allowlist. Nothing outside it can reach the ORDER BY. */

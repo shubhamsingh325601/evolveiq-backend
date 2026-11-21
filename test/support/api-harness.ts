@@ -7,7 +7,31 @@ import { buildApp } from '../../src/app.js';
 import { loadConfig, type AppConfig } from '../../src/config.js';
 import { hashSecret } from '../../src/modules/auth/password.js';
 import { createPrismaClient, type Db } from '../../src/shared/db/prisma.js';
+import type { Mailer, MailMessage } from '../../src/shared/mail/mailer.js';
 import { assertTestDatabase } from './global-setup.js';
+
+/** Mail the app "sent" during a test: captured here instead of leaving the machine. */
+export interface MailOutbox {
+  /** Every message so far, oldest first. */
+  readonly messages: readonly MailMessage[];
+  /** The messages to `address` so far, oldest first. */
+  to(address: string): MailMessage[];
+  clear(): void;
+}
+
+function createOutbox(): Mailer & MailOutbox {
+  const messages: MailMessage[] = [];
+  return {
+    messages,
+    async send(message) {
+      messages.push(message);
+    },
+    to: (address) => messages.filter((m) => m.to === address),
+    clear() {
+      messages.length = 0;
+    },
+  };
+}
 
 export const SCHOOL_A = '11111111-1111-4111-8111-111111111111';
 export const SCHOOL_B = '22222222-2222-4222-8222-222222222222';
@@ -30,6 +54,10 @@ export interface TestContext {
   pg: pg.Pool;
   prisma: Db;
   baseUrl: string;
+  /** Mail the app sent (e.g. password-reset codes). */
+  mail: MailOutbox;
+  /** Waits for work the app does after replying (e.g. emailing a reset code). */
+  settle(): Promise<void>;
   send(method: HttpMethod, url: string, opts?: { body?: unknown; token?: string | undefined }): Promise<ApiResponse>;
   get(url: string, token?: string): Promise<ApiResponse>;
   post(url: string, body: unknown, token?: string): Promise<ApiResponse>;
@@ -59,7 +87,8 @@ export async function createTestContext(options: { now?: () => Date } = {}): Pro
   await resetData(pool);
 
   const prisma = createPrismaClient({ databaseUrl: url, poolMax: 10 });
-  const app = await buildApp({ config, db: prisma, ...(options.now && { now: options.now }) });
+  const mail = createOutbox();
+  const app = await buildApp({ config, db: prisma, mailer: mail, ...(options.now && { now: options.now }) });
   await app.listen({ host: '127.0.0.1', port: 0 });
   const address = app.server.address();
   if (!address || typeof address === 'string') throw new Error('server did not bind a TCP port');
@@ -78,6 +107,8 @@ export async function createTestContext(options: { now?: () => Date } = {}): Pro
     pg: pool,
     prisma,
     baseUrl,
+    mail,
+    settle: () => app.backgroundTasks.settled(),
     send,
     get: (url, token) => send('GET', url, { token }),
     post: (url, body, token) => send('POST', url, { body, token }),

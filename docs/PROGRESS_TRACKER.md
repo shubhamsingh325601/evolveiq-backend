@@ -20,6 +20,7 @@ Update this table as work lands — keep it in sync with merged PRs, not with pl
 |---|---|---|---|
 | Login/session endpoints | Done | | on `API`, not yet merged to `main`. Login, refresh (rotating), logout (current session; access token expires on its own) |
 | Role-scoped user endpoints | Done | | on `API`, not yet merged to `main`. `/users` list / view / edit / deactivate / reactivate; `/parent-students` links |
+| Forgot password / set a new password (asked for 21 Nov 2026) | Done | | on `API`, not yet merged to `main`. Adults: `/auth/forgot-password` emails a 6-digit code (15 min, 5 tries, newest only; 1/min, 5/hour), `/auth/reset-password` sets the new one. `/auth/change-password` for signed-in adults. `/users/:userId/set-password` (admins, password or PIN) and `/family/children/:studentId/set-pin` (parents). Every path ends all sessions and clears the lockout. Mail via SMTP (`SMTP_*`, Titan `no-reply@evolviq.in`); migration `password_reset_codes` |
 
 ## Observations
 | Item | Status | Owner | Notes |

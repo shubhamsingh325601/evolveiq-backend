@@ -30,6 +30,14 @@ export const Errors = {
   // One answer for malformed, forged, expired, unknown, revoked and re-used refresh tokens.
   invalidRefreshToken: () =>
     new AppError(401, 'INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token.'),
+  // Forgot password: one answer for an unknown email, no code, a wrong, used or expired code, and
+  // a code out of tries. 400, not 401, so a client never takes it for an expired session.
+  invalidResetCode: () =>
+    new AppError(400, 'INVALID_RESET_CODE', 'The code is wrong or has expired. Ask for a new one.'),
+  // Change password: the current password given was wrong (or the account is locked for a while).
+  // 400, not 401: the session itself is fine.
+  invalidCurrentPassword: () =>
+    new AppError(400, 'INVALID_CURRENT_PASSWORD', 'Your current password is not correct.'),
   accountDisabled: () => new AppError(403, 'ACCOUNT_DISABLED', 'This account has been deactivated.'),
   forbidden: (message = 'You are not allowed to perform this action.') =>
     new AppError(403, 'FORBIDDEN', message),

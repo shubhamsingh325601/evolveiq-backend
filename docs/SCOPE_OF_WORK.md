@@ -46,6 +46,12 @@ prototype — not yet confirmed scope.
 - Login/session (JWT access + refresh)
 - Roles: Student, Parent, Teacher, Psychologist, School Admin, Platform Admin
 - RBAC middleware enforced at the route layer, not just in service logic
+- **Change, 21 Nov 2026 (asked for by the project lead):** forgot password and setting a new
+  one, for every role. Adults get a 6-digit code by email (`/auth/forgot-password`,
+  `/auth/reset-password`) and can change their password while signed in
+  (`/auth/change-password`). Students have no email: their parent
+  (`/family/children/:studentId/set-pin`) or School Admin sets a new PIN; admins can also set a
+  new password for the people they manage (`/users/:userId/set-password`).
 
 ### Observations
 - Create observation (Parent variant: tone, area, free text, when, how often;

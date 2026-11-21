@@ -41,6 +41,7 @@ beforeEach(() => {
   repo = {
     findById: vi.fn(), list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
     deactivate: vi.fn(), reactivate: vi.fn(), update: vi.fn(), remove: vi.fn(),
+    setSecret: vi.fn().mockResolvedValue(true),
   };
   service = createUsersService({ repository: repo as unknown as UsersRepository });
 });
@@ -203,5 +204,41 @@ describe('update', () => {
     repo.findById.mockResolvedValue(record({ schoolId: SCHOOL_B }));
     await expectAppError(service.update(SCHOOL_ADMIN, USER_ID, { fullName: 'X' }), 404, 'NOT_FOUND');
     expect(repo.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('setSecret (forgot password / PIN, 21 Nov 2026)', () => {
+  test('a student gets a PIN, stored only as an argon2id hash', async () => {
+    repo.findById.mockResolvedValue(record());
+    await service.setSecret(SCHOOL_ADMIN, USER_ID, { pin: '123456' });
+    expect(repo.setSecret).toHaveBeenCalledWith(USER_ID, expect.stringMatching(/^\$argon2id\$/));
+  });
+
+  test('an adult gets a password', async () => {
+    repo.findById.mockResolvedValue(record({ role: 'teacher', email: 't@a.test', studentLoginId: null }));
+    await service.setSecret(PLATFORM_ADMIN, USER_ID, { password: 'A-new-password-1' });
+    expect(repo.setSecret).toHaveBeenCalledWith(USER_ID, expect.stringMatching(/^\$argon2id\$/));
+  });
+
+  test('a password for a student, or a PIN for an adult → 400 naming the field, nothing written', async () => {
+    repo.findById.mockResolvedValue(record());
+    await expectAppError(service.setSecret(PLATFORM_ADMIN, USER_ID, { password: 'A-new-password-1' }), 400, 'VALIDATION_ERROR');
+    repo.findById.mockResolvedValue(record({ role: 'parent', email: 'p@a.test', studentLoginId: null }));
+    await expectAppError(service.setSecret(PLATFORM_ADMIN, USER_ID, { pin: '123456' }), 400, 'VALIDATION_ERROR');
+    expect(repo.setSecret).not.toHaveBeenCalled();
+  });
+
+  test('your own account → 403, nothing read or written', async () => {
+    await expectAppError(service.setSecret(SCHOOL_ADMIN, SCHOOL_ADMIN.userId, { password: 'A-new-password-1' }), 403, 'FORBIDDEN');
+    expect(repo.findById).not.toHaveBeenCalled();
+    expect(repo.setSecret).not.toHaveBeenCalled();
+  });
+
+  test('School Admin: another school, or a role they do not manage → 404, nothing written', async () => {
+    repo.findById.mockResolvedValue(record({ schoolId: SCHOOL_B }));
+    await expectAppError(service.setSecret(SCHOOL_ADMIN, USER_ID, { pin: '123456' }), 404, 'NOT_FOUND');
+    repo.findById.mockResolvedValue(record({ role: 'school_admin', email: 'x@a.test', studentLoginId: null }));
+    await expectAppError(service.setSecret(SCHOOL_ADMIN, USER_ID, { password: 'A-new-password-1' }), 404, 'NOT_FOUND');
+    expect(repo.setSecret).not.toHaveBeenCalled();
   });
 });

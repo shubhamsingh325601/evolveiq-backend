@@ -93,8 +93,13 @@ describe('API documentation', () => {
     expect(op.requestBody.content['application/json'].schema).toBeDefined();
   });
 
-  test('every API operation documents bearer auth and its allowed roles (except login / refresh)', () => {
-    const PUBLIC = new Set(['/api/v1/auth/login', '/api/v1/auth/refresh']);
+  test('every API operation documents bearer auth and its allowed roles (except the signed-out auth routes)', () => {
+    // Signed out by definition: logging in, refreshing, and forgot password (21 Nov 2026).
+    const PUBLIC = new Set(['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/forgot-password', '/api/v1/auth/reset-password']);
+    for (const path of PUBLIC) {
+      expect(doc.paths[path]?.post, path).toBeDefined();
+      expect(doc.paths[path].post.security, path).toBeUndefined();
+    }
     let count = 0;
     for (const [path, ops] of Object.entries(doc.paths as Record<string, Record<string, { security?: unknown; description?: string; tags?: string[] }>>)) {
       if (!path.startsWith('/api/') || PUBLIC.has(path)) continue;

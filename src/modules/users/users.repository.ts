@@ -4,6 +4,7 @@ import type { Db } from '../../shared/db/prisma.js';
 import { constraintViolation, isPrismaKnownError } from '../../shared/errors/index.js';
 import { escapeLike, type SortOrder } from '../../shared/pagination/index.js';
 import type { Role } from '../../shared/rbac/index.js';
+import { replaceSecret } from '../auth/secret.repository.js';
 import type { UserSortField } from './users.schemas.js';
 
 // Never selects secret_hash or the lockout columns.
@@ -127,6 +128,14 @@ export function createUsersRepository(db: Db) {
         if (isPrismaKnownError(err, 'P2025')) return null;
         throw err;
       }
+    },
+
+    /**
+     * A new password or PIN set by an admin or a parent: the new hash, a clean lockout and every
+     * session ended (auth/secret.repository.ts). False when no user has this id.
+     */
+    setSecret(id: string, secretHash: string): Promise<boolean> {
+      return db.$transaction((tx) => replaceSecret(tx, id, secretHash));
     },
   };
 }

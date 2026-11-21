@@ -4,9 +4,9 @@ import type { Actor } from '../../shared/rbac/index.js';
 import { signAccessToken } from './access-token.js';
 import { authorizeRegistration } from './auth.policy.js';
 import type { AuthRepository } from './auth.repository.js';
-import type { LoginBody, RegisterBody } from './auth.schemas.js';
+import type { ChangePasswordBody, LoginBody, RegisterBody } from './auth.schemas.js';
 import { getDummyHash, hashSecret, verifySecret } from './password.js';
-import type { RefreshTokenService } from './refresh-token.service.js';
+import type { RefreshTokenService, TokenPair } from './refresh-token.service.js';
 
 // Database constraint → API error. Constraint names come from prisma/migrations.
 const UNIQUE_FIELD: Readonly<Record<string, string>> = {
@@ -132,7 +132,32 @@ export function createAuthService(deps: {
     };
   }
 
-  return { register, login };
+  // An adult changes their own password (asked for on 21 Nov 2026). Every session of the account
+  // ends — a stolen session can't outlive the password it was opened with — and this device gets
+  // a fresh pair of tokens, so only the others are signed out. A wrong current password counts
+  // toward the login lockout, so a stolen access token can't be used to guess it either.
+  async function changePassword(actor: Actor, body: ChangePasswordBody): Promise<TokenPair> {
+    const user = await repo.findUserById(actor.userId);
+    if (!user || !user.is_active) throw Errors.unauthenticated(); // authenticate() checked this moments ago
+
+    const isCurrentValid = await verifySecret(user.secret_hash, body.currentPassword);
+    if (user.is_locked) throw Errors.invalidCurrentPassword(); // same answer while locked
+    if (!isCurrentValid) {
+      await repo.recordFailedLogin(user.id, config.login.maxAttempts, config.login.lockMinutes);
+      throw Errors.invalidCurrentPassword();
+    }
+
+    if (!(await repo.changeSecret(user.id, await hashSecret(body.newPassword)))) throw Errors.unauthenticated();
+
+    // Only after every old session was revoked: the new refresh token must not be among them.
+    const [accessToken, { refreshToken, refreshExpiresIn }] = await Promise.all([
+      signAccessToken(config.jwt, { id: user.id, role: user.role, schoolId: user.school_id }),
+      refreshTokens.issue(user.id),
+    ]);
+    return { accessToken, tokenType: 'Bearer', expiresIn: config.jwt.ttlSeconds, refreshToken, refreshExpiresIn };
+  }
+
+  return { register, login, changePassword };
 }
 
 export type AuthService = ReturnType<typeof createAuthService>;

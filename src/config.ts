@@ -11,6 +11,20 @@ export interface JwtConfig {
   };
 }
 
+export interface SmtpConfig {
+  readonly host: string;
+  readonly port: number;
+  readonly user: string;
+  readonly password: string;
+}
+
+export interface MailConfig {
+  /** null: no SMTP server is configured, so mail is logged instead of sent (src/shared/mail). */
+  readonly smtp: SmtpConfig | null;
+  /** The From header, e.g. "EvolvIQ <no-reply@evolviq.in>". */
+  readonly from: string;
+}
+
 export interface AppConfig {
   readonly env: string;
   readonly host: string;
@@ -30,6 +44,8 @@ export interface AppConfig {
     /** Browser origins allowed to call the API; `true` reflects any origin (never in production). */
     readonly origins: true | readonly string[];
   };
+  /** Outgoing email: password-reset codes. */
+  readonly mail: MailConfig;
   /** Non-fatal configuration problems (e.g. deprecated variable names), logged at startup. */
   readonly warnings: readonly string[];
 }
@@ -103,6 +119,30 @@ function corsOrigins(env: string): true | readonly string[] {
   );
 }
 
+// SMTP_*: where outgoing mail (password-reset codes) is handed over. Production uses Titan:
+// SMTP_HOST=smtp.titan.email, port 465, the no-reply@evolviq.in mailbox. Unset, mail is logged
+// instead (the code itself only in development), so a server without a mailbox still starts —
+// with a warning in production, where nobody would otherwise notice that no email goes out.
+function mailConfig(env: string, warnings: string[]): MailConfig {
+  const from = process.env.MAIL_FROM?.trim() || 'EvolvIQ <no-reply@evolviq.in>';
+  const host = process.env.SMTP_HOST?.trim();
+  if (!host) {
+    if (env === 'production') {
+      warnings.push('SMTP_HOST is not set, so password-reset emails cannot be sent. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.');
+    }
+    return Object.freeze({ smtp: null, from });
+  }
+  return Object.freeze({
+    smtp: Object.freeze({
+      host,
+      port: int('SMTP_PORT', 465, 1, 65535),
+      user: required('SMTP_USER'),
+      password: required('SMTP_PASSWORD'),
+    }),
+    from,
+  });
+}
+
 export function loadConfig(): AppConfig {
   const warnings: string[] = [];
   const jwtSecret = accessSecret(warnings);
@@ -151,6 +191,7 @@ export function loadConfig(): AppConfig {
       isEnabled: bool('API_DOCS_ENABLED', env !== 'production'),
     }),
     cors: Object.freeze({ origins: corsOrigins(env) }),
+    mail: mailConfig(env, warnings), // before `warnings`, which it may add to
     warnings: Object.freeze(warnings),
   });
 }

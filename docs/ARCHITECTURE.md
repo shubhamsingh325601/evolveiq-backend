@@ -41,6 +41,8 @@ src/
     rbac/              # Role guard middleware, permission checks
     errors/            # Typed error classes -> HTTP status mapping
     db/                # Prisma client singleton
+    mail/              # Outgoing email (SMTP, or the log when unconfigured)
+    background/        # Work after the response; app.close() waits for it
 prisma/
   schema.prisma
   migrations/
@@ -111,6 +113,19 @@ live in services, not routes or controllers-as-routes. Classes live in the
     DELETE RESTRICT, so `DELETE /users/:id` removes only an account nobody's
     records point at (with its class place, parent link, health profile and
     sessions), else 409 `HAS_RECORDS`.
+
+## Passwords and PINs (21 Nov 2026)
+- Forgot password is for adults: a 6-digit code by email (`password_reset_codes`, argon2id hash
+  only; 15 minutes, 5 tries, once; only the newest code of an account works; 1 a minute and 5 an
+  hour per account). The request always gets the same 202, and the lookup, code and email run
+  after the reply (`shared/background`), so nothing tells whether an email is registered.
+- Students have no email: their parent (`/family/children/:studentId/set-pin`, student scope) or
+  an admin (`/users/:userId/set-password`, the user-management reach) sets a new PIN; admins set
+  adults' passwords the same way. Signed-in adults change their own (`/auth/change-password`).
+- Every way of setting a password or PIN goes through `auth/secret.repository.ts`: the new hash,
+  a cleared login lockout, and every session of the account ended (refresh tokens revoked).
+- Mail leaves through `shared/mail` (SMTP from `SMTP_*`: Titan, `no-reply@evolviq.in`). With no
+  SMTP server it is logged instead — its text only in development.
 
 ## Access rules worth encoding explicitly
 - Parents never see clinical scores or psychologist notes.

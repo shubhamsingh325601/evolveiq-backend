@@ -93,3 +93,41 @@ describe('CORS_ORIGINS', () => {
     }
   });
 });
+
+describe('SMTP_* (outgoing mail: password-reset codes, 21 Nov 2026)', () => {
+  // JWT_SECRET too: a local .env may set the legacy name, which adds a warning of its own.
+  const NO_SMTP = { SMTP_HOST: undefined, SMTP_PORT: undefined, SMTP_USER: undefined, SMTP_PASSWORD: undefined, MAIL_FROM: undefined, JWT_SECRET: undefined };
+
+  test('unset → mail is logged, not sent; no warning outside production', () => {
+    const cfg = withEnv({ ...NO_SMTP, NODE_ENV: 'development' }, loadConfig);
+    expect(cfg.mail).toEqual({ smtp: null, from: 'EvolvIQ <no-reply@evolviq.in>' });
+    expect(cfg.warnings).toEqual([]);
+  });
+
+  test('unset in production → the server still starts, with a warning', () => {
+    const cfg = withEnv({ ...NO_SMTP, NODE_ENV: 'production', CORS_ORIGINS: 'https://teacher.evolviq.in' }, loadConfig);
+    expect(cfg.mail.smtp).toBeNull();
+    expect(cfg.warnings).toEqual([
+      'SMTP_HOST is not set, so password-reset emails cannot be sent. Set SMTP_HOST, SMTP_USER and SMTP_PASSWORD.',
+    ]);
+  });
+
+  test('SMTP_HOST set → user and password are required; the port defaults to 465', () => {
+    expect(() => withEnv({ ...NO_SMTP, SMTP_HOST: 'smtp.titan.email' }, loadConfig)).toThrow(/SMTP_USER/);
+    expect(() => withEnv({ ...NO_SMTP, SMTP_HOST: 'smtp.titan.email', SMTP_USER: 'no-reply@evolviq.in' }, loadConfig)).toThrow(/SMTP_PASSWORD/);
+    const cfg = withEnv(
+      { ...NO_SMTP, SMTP_HOST: ' smtp.titan.email ', SMTP_USER: 'no-reply@evolviq.in', SMTP_PASSWORD: 'pw', MAIL_FROM: 'EvolvIQ <hello@evolviq.in>' },
+      loadConfig,
+    );
+    expect(cfg.mail).toEqual({
+      smtp: { host: 'smtp.titan.email', port: 465, user: 'no-reply@evolviq.in', password: 'pw' },
+      from: 'EvolvIQ <hello@evolviq.in>',
+    });
+  });
+
+  test('SMTP_PORT must be a valid port', () => {
+    const smtp = { ...NO_SMTP, SMTP_HOST: 'smtp.titan.email', SMTP_USER: 'u', SMTP_PASSWORD: 'p' };
+    expect(() => withEnv({ ...smtp, SMTP_PORT: 'abc' }, loadConfig)).toThrow(/SMTP_PORT/);
+    expect(withEnv({ ...smtp, SMTP_PORT: '587' }, loadConfig).mail.smtp?.port).toBe(587);
+  });
+});
