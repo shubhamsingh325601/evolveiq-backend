@@ -119,8 +119,8 @@ function corsOrigins(env: string): true | readonly string[] {
   );
 }
 
-// SMTP_*: where outgoing mail (password-reset codes) is handed over. Production uses Titan:
-// SMTP_HOST=smtp.titan.email, port 465, the no-reply@evolviq.in mailbox. Unset, mail is logged
+// SMTP_*: where outgoing mail (password-reset codes) is handed over. Production uses Resend:
+// SMTP_HOST=smtp.resend.com, port 465, user "resend", an API key as the password. Unset, mail is logged
 // instead (the code itself only in development), so a server without a mailbox still starts —
 // with a warning in production, where nobody would otherwise notice that no email goes out.
 function mailConfig(env: string, warnings: string[]): MailConfig {

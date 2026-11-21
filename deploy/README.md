@@ -69,9 +69,10 @@ tar -czf - -C apps/school-web/dist . | ssh root@<vps> 'tar -xzf - -C /var/www/ev
 `CORS_ORIGINS` (the three frontend origins), `API_DOCS_ENABLED=false`, plus the other
 variables in `.env.example`. After changing it: `docker compose -f docker-compose.prod.yml up -d api`.
 
-Password-reset emails go out through Titan, from the `no-reply@evolviq.in` mailbox:
-`SMTP_HOST=smtp.titan.email`, `SMTP_PORT=465`, `SMTP_USER=no-reply@evolviq.in`,
-`SMTP_PASSWORD=<that mailbox's password>`, `MAIL_FROM=EvolvIQ <no-reply@evolviq.in>`. Without
+Password-reset emails go out through Resend, as `no-reply@evolviq.in` (evolviq.in is verified in
+Resend; its DNS records are at GoDaddy, beside the Titan mailbox records, which they do not touch):
+`SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`,
+`SMTP_PASSWORD=<a Resend API key with Sending access to evolviq.in>`, `MAIL_FROM=EvolvIQ <no-reply@evolviq.in>`. Without
 `SMTP_HOST` the API still starts but logs a warning, and no reset email can be sent.
 
 ## Backup

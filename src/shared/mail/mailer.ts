@@ -1,5 +1,5 @@
 // Outgoing email (ARCHITECTURE.md → shared/mail). Services see one small interface, so they never
-// know how mail leaves: SMTP in production (Titan, from no-reply@evolviq.in), the log when no SMTP
+// know how mail leaves: SMTP in production (Resend, as no-reply@evolviq.in), the log when no SMTP
 // server is configured, and a capturing fake in tests (test/support/api-harness.ts).
 import type { FastifyBaseLogger } from 'fastify';
 import nodemailer from 'nodemailer';
@@ -21,7 +21,7 @@ export function createSmtpMailer(smtp: SmtpConfig, from: string): Mailer {
   const transport = nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port,
-    // 465 is TLS from the first byte (Titan's port); any other port must upgrade with STARTTLS.
+    // 465 is TLS from the first byte; any other port must upgrade with STARTTLS.
     secure: smtp.port === 465,
     requireTLS: smtp.port !== 465,
     auth: { user: smtp.user, pass: smtp.password },

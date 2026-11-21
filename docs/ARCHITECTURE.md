@@ -124,7 +124,7 @@ live in services, not routes or controllers-as-routes. Classes live in the
   adults' passwords the same way. Signed-in adults change their own (`/auth/change-password`).
 - Every way of setting a password or PIN goes through `auth/secret.repository.ts`: the new hash,
   a cleared login lockout, and every session of the account ended (refresh tokens revoked).
-- Mail leaves through `shared/mail` (SMTP from `SMTP_*`: Titan, `no-reply@evolviq.in`). With no
+- Mail leaves through `shared/mail` (SMTP from `SMTP_*`: Resend, as `no-reply@evolviq.in`). With no
   SMTP server it is logged instead — its text only in development.
 
 ## Access rules worth encoding explicitly
